@@ -1,5 +1,5 @@
 # JsonRpcLite
 
-[![Actions Status](https://github.com/ithinkso117/JsonRpcLite/workflows/Build/badge.svg)](https://github.com/ithinkso117/JsonRpcLite/actions)
+![JsonRpcLite](https://github.com/ithinkso117/JsonRpcLite/workflows/JsonRpcLite/badge.svg)
 
 This is a simple JsonRpc server implementation, it's simple, but fast!
