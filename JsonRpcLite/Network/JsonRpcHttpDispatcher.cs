@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -50,12 +49,12 @@ namespace JsonRpcLite.Network
                 {
                     throw new MethodNotFoundException($"Method: {request.Method} not found.");
                 }
-                var arguments = await JsonRpcCodec.DecodeArgumentsAsync(request.Params, rpcCall.Parameters.ToArray()).ConfigureAwait(false);
+                var arguments = await JsonRpcCodec.DecodeArgumentsAsync(request.Params, rpcCall.Parameters).ConfigureAwait(false);
 
                 //From here we got the response id.
                 response = new JsonRpcResponse(request.Id);
                 //The parser will add context into the args, so the final count is parameter count + 1.
-                if (arguments.Length == rpcCall.Parameters.Length)
+                if (arguments.Length == rpcCall.Parameters.Count)
                 {
                     try
                     {
@@ -70,10 +69,12 @@ namespace JsonRpcLite.Network
                     {
                         var argumentString = new StringBuilder();
                         argumentString.Append(Environment.NewLine);
+                        var index = 0;
                         foreach (var argument in arguments)
                         {
-                            argumentString.AppendLine($"{argument.Name} = {argument.Value}");
+                            argumentString.AppendLine($"[{index}] {argument}");
                         }
+
                         argumentString.Append(Environment.NewLine);
                         Logger.WriteError($"Call method {rpcCall.Name} with args:{argumentString} error :{ex.Format()}");
                         response.WriteResult(new InternalErrorException());
@@ -143,6 +144,7 @@ namespace JsonRpcLite.Network
             try
             {
                 await ReadRequestDataAsync(context.Request.InputStream, requestData).ConfigureAwait(false);
+                context.Request.InputStream.Close();
                 if (Logger.DebugMode)
                 {
                     var requestString = Encoding.UTF8.GetString(requestData);

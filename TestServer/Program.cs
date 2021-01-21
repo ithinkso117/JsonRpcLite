@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.InProcess;
+using JsonRpcLite.Log;
 
 namespace TestServer
 {
@@ -22,7 +23,7 @@ namespace TestServer
             //Logger.DebugMode = true;
             //Logger.UseDefaultWriter();
 
-            ThreadPool.SetMinThreads(500000, 500000);
+            //ThreadPool.SetMinThreads(500000, 500000);
 
             for (var i = 0; i < 20; i++)
             {
@@ -34,10 +35,9 @@ namespace TestServer
         }
 
 
-        public static Task Process(string reqeustStr)
+        public static Task Process(string requestStr)
         {
-           //return Task.Factory.StartNew(()=>Server.ProcessAsync("test", "v1", jsonRpc).Wait());
-           return Server.ProcessAsync("test", "v1", reqeustStr);
+            return Server.BenchmarkProcessAsync("test", "v1", requestStr);
         }
 
         private static void Benchmark(string[] testData)

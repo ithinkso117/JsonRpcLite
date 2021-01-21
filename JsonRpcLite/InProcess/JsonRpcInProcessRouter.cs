@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -52,6 +52,7 @@ namespace JsonRpcLite.InProcess
             }
         }
 
+
         /// <summary>
         /// Dispatch request to the service
         /// </summary>
@@ -70,27 +71,15 @@ namespace JsonRpcLite.InProcess
                     throw new InvalidOperationException($"Service [{key}] does not exist.");
                 }
 
-                byte[] requestData = null;
-                var dataLength = 0;
-                var rent = false;
+                Stream requestStream = null;
+                Utf8StringData utf8StringData = null;
                 if (typeof(T) == typeof(string))
                 {
                     var requestString = (string)Convert.ChangeType(request, typeof(string));
                     if (!string.IsNullOrEmpty(requestString))
                     {
-                        dataLength = Encoding.UTF8.GetMaxByteCount(requestString.Length);
-                        requestData = ArrayPool<byte>.Shared.Rent(dataLength);
-                        rent = true;
-                        unsafe
-                        {
-                            fixed (char* c = requestString)
-                            {
-                                fixed (byte* b = requestData)
-                                {
-                                    dataLength = Encoding.UTF8.GetBytes(c, requestString.Length, b, dataLength);
-                                }
-                            }
-                        }
+                        utf8StringData = Utf8StringData.Get(requestString);//new Utf8StringData(requestString);
+                        requestStream = utf8StringData.Stream;
                         if (Logger.DebugMode)
                         {
                             Logger.WriteDebug($"Receive request data:{requestString}");
@@ -103,16 +92,13 @@ namespace JsonRpcLite.InProcess
                 }
                 else if (typeof(T) == typeof(byte[]))
                 {
-                    requestData = (byte[]) Convert.ChangeType(request, typeof(byte[]));
+                    requestStream = new MemoryStream((byte[]) Convert.ChangeType(request, typeof(byte[])));
                 }
 
-                if (requestData != null)
+                if (requestStream != null)
                 {
-                    var jsonRpcRequests = await JsonRpcCodec.DecodeRequestsAsync(requestData, dataLength).ConfigureAwait(false);
-                    if (rent)
-                    {
-                        ArrayPool<byte>.Shared.Return(requestData);
-                    }
+                    var jsonRpcRequests = await JsonRpcCodec.DecodeRequestsAsync(requestStream).ConfigureAwait(false);
+                    utf8StringData?.Dispose();
                     if (jsonRpcRequests.Length == 1)
                     {
                         var response = await GetResponseAsync(service, jsonRpcRequests[0]).ConfigureAwait(false);
@@ -191,11 +177,11 @@ namespace JsonRpcLite.InProcess
                     throw new InvalidOperationException($"Method: {request.Method} not found.");
                 }
 
-                var arguments = await JsonRpcCodec.DecodeArgumentsAsync(request.Params, rpcCall.Parameters.ToArray()).ConfigureAwait(false);
+                var arguments = await JsonRpcCodec.DecodeArgumentsAsync(request.Params, rpcCall.Parameters).ConfigureAwait(false);
 
                 //From here we got the response id.
                 //The parser will add context into the args, so the final count is parameter count + 1.
-                if (arguments.Length == rpcCall.Parameters.Length)
+                if (arguments.Length == rpcCall.Parameters.Count)
                 {
                     try
                     {
@@ -211,13 +197,14 @@ namespace JsonRpcLite.InProcess
                     {
                         var argumentString = new StringBuilder();
                         argumentString.Append(Environment.NewLine);
+                        var index = 0;
                         foreach (var argument in arguments)
                         {
-                            argumentString.AppendLine($"{argument.Name} = {argument.Value}");
+                            argumentString.AppendLine($"[{index}] {argument}");
                         }
 
                         argumentString.Append(Environment.NewLine);
-                        Logger.WriteError( $"Call method {rpcCall.Name} with args:{argumentString} error :{ex.Format()}");
+                        Logger.WriteError($"Call method {rpcCall.Name} with args:{argumentString} error :{ex.Format()}");
                         response.WriteResult(new InvalidOperationException());
                     }
                 }

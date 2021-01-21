@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using JsonRpcLite.Utilities;
 
@@ -24,7 +24,7 @@ namespace JsonRpcLite.Services
         /// <summary>
         /// Gets the information for the parameters. 
         /// </summary>
-        public JsonRpcCallParameter[] Parameters { get; }
+        public IReadOnlyList<JsonRpcCallParameter> Parameters { get; }
 
 
         /// <summary>
@@ -47,17 +47,16 @@ namespace JsonRpcLite.Services
         /// </summary>
         /// <param name="arguments">The arguments which will pass to the method.</param>
         /// <returns>The result from the call.</returns>
-        public async Task<object> Call(JsonRpcArgument[] arguments)
+        public async Task<object> Call(object[] arguments)
         {
-            var args = arguments.Select(x => x.Value).ToArray();
             switch (_method)
             {
                 case JsonRpcVoidInvokeMethod jsonRpcVoidInvokeMethod:
-                    jsonRpcVoidInvokeMethod.Invoke(_thisObject, args);
+                    jsonRpcVoidInvokeMethod.Invoke(_thisObject, arguments);
                     return null;
                 case JsonRpcInvokeMethod jsonRpcInvokeMethod:
                 {
-                    var result = jsonRpcInvokeMethod.Invoke(_thisObject, args);
+                    var result = jsonRpcInvokeMethod.Invoke(_thisObject, arguments);
                     if (result is Task task)
                     {
                         return await TaskResult.Get(task).ConfigureAwait(false);

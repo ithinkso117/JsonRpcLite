@@ -27,6 +27,20 @@ namespace JsonRpcLite.InProcess
         }
 
 
+
+        /// <summary>
+        /// Process a string request which contains the json data, return nothing for benchmark..
+        /// </summary>
+        /// <param name="serviceName">The name of the service.</param>
+        /// <param name="serviceVersion">The version of the service.</param>
+        /// <param name="request">The request string</param>
+        /// <returns>Void</returns>
+        public async Task BenchmarkProcessAsync(string serviceName, string serviceVersion, string request)
+        {
+            await _router.DispatchCallAsync(serviceName, serviceVersion, request);
+        }
+
+
         /// <summary>
         /// Process a byte[] request which contains the json data.
         /// </summary>

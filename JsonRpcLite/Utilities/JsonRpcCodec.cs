@@ -102,21 +102,55 @@ namespace JsonRpcLite.Utilities
 
 
         /// <summary>
+        /// Convert binary data to JsonRpcHttpRequest array.
+        /// </summary>
+        /// <param name="stream">The stream contains request data to be converted.</param>
+        /// <returns>The JsonRpcHttpRequest array converted from request data.</returns>
+        public static async Task<JsonRpcRequest[]> DecodeRequestsAsync(Stream stream)
+        {
+            JsonDocument doc = null;
+            try
+            {
+                try
+                {
+                    doc = await JsonDocument.ParseAsync(stream, JsonRpcConvertSettings.DocumentOptions);
+                }
+                catch (Exception ex)
+                {
+                    throw new ParseErrorException(ex.Message);
+                }
+
+                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    return doc.RootElement.EnumerateArray().Select(DecodeRequest).ToArray();
+                }
+
+                return new[] { DecodeRequest(doc.RootElement) };
+
+            }
+            finally
+            {
+                doc?.Dispose();
+            }
+        }
+
+
+        /// <summary>
         /// Convert param json string to JsonRpcArguments.
         /// </summary>
         /// <param name="paramString">The parameter(s)'s json string to be converted.</param>
         /// <param name="parameters">The parameters of the calling method.</param>
         /// <returns>The converted arguments.</returns>
-        public static async Task<JsonRpcArgument[]> DecodeArgumentsAsync(string paramString, JsonRpcCallParameter[] parameters)
+        public static async Task<object[]> DecodeArgumentsAsync(string paramString, IReadOnlyList<JsonRpcCallParameter> parameters)
         {
-            if (parameters.Length == 0)
+            if (parameters.Count == 0)
             {
-                return Array.Empty<JsonRpcArgument>();
+                return Array.Empty<object>();
             }
 
-            using var parameterData = new Utf8StringData(paramString);
+            using var parameterData = Utf8StringData.Get(paramString);//new Utf8StringData(paramString);
             using var paramDoc = await JsonDocument.ParseAsync(parameterData.Stream, JsonRpcConvertSettings.DocumentOptions);
-            if (parameters.Length == 1)
+            if (parameters.Count == 1)
             {
                 // paramString is an object
                 var parameter = parameters[0];
@@ -124,38 +158,39 @@ namespace JsonRpcLite.Utilities
                 try
                 {
                     var parameterElement = paramDoc.RootElement.ValueKind == JsonValueKind.Array ? paramDoc.RootElement[0] : paramDoc.RootElement;
-                    using var paramValueData = new Utf8StringData(parameterElement.GetRawText());
+                    using var paramValueData = Utf8StringData.Get(parameterElement.GetRawText());//new Utf8StringData(parameterElement.GetRawText());
                     parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions);
                 }
                 catch (Exception ex)
                 {
                     throw new InvalidParamsException(ex.Message);
                 }
-                return new[] {new JsonRpcArgument(parameter.Name, parameterValue)};
+                return new[] {parameterValue};
             }
 
             // paramString is an array
-            var arguments = new List<JsonRpcArgument>();
-            var parameterElements = paramDoc.RootElement.EnumerateArray().ToArray();
-            for (var i = 0; i < parameterElements.Length; i++)
+            var arrayLength = paramDoc.RootElement.GetArrayLength();
+            var arguments = new object[arrayLength];
+            var parameterElements = paramDoc.RootElement.EnumerateArray();
+            var index = 0;
+            foreach (var parameterElement in parameterElements)
             {
-                var parameterElement = parameterElements[i];
-                var parameter = parameters[i];
+                var parameter = parameters[index];
                 object parameterValue;
                 try
                 {
-                    using var paramValueData = new Utf8StringData(parameterElement.GetRawText());
-                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream,parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions);
+                    using var paramValueData = Utf8StringData.Get(parameterElement.GetRawText());//new Utf8StringData(parameterElement.GetRawText());
+                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions);
                 }
                 catch (Exception ex)
                 {
                     throw new InvalidParamsException(ex.Message);
                 }
 
-                arguments.Add(new JsonRpcArgument(parameter.Name, parameterValue));
+                arguments[index] = parameterValue;
+                index++;
             }
-
-            return arguments.ToArray();
+            return arguments;
         }
 
         /// <summary>
