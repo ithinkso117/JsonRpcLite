@@ -14,6 +14,5 @@ namespace JsonRpcLite.Utilities
         /// Use AllowTrailingCommas for compatible with most Json formats.
         /// </summary>
         public static readonly JsonDocumentOptions DocumentOptions = new() { AllowTrailingCommas = true };
-
     }
 }

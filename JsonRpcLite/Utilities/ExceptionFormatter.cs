@@ -1,5 +1,4 @@
 ﻿using System;
-using JsonRpcLite.Network;
 using JsonRpcLite.Services;
 
 namespace JsonRpcLite.Utilities

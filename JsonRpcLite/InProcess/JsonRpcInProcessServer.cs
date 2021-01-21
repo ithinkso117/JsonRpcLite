@@ -8,6 +8,7 @@ namespace JsonRpcLite.InProcess
     public class JsonRpcInProcessServer
     {
         private readonly JsonRpcInProcessRouter _router;
+
         public JsonRpcInProcessServer()
         {
             _router = new JsonRpcInProcessRouter();
@@ -20,9 +21,9 @@ namespace JsonRpcLite.InProcess
         /// <param name="serviceVersion">The version of the service.</param>
         /// <param name="request">The request string</param>
         /// <returns>The response string.</returns>
-        public async Task ProcessAsync(string serviceName, string serviceVersion, string request)
+        public async Task<string> ProcessAsync(string serviceName, string serviceVersion, string request)
         {
-            await _router.DispatchCallAsync(serviceName, serviceVersion, request);
+            return await _router.DispatchCallAsync(serviceName, serviceVersion, request);
         }
 
 

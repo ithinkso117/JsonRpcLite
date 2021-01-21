@@ -71,8 +71,8 @@ namespace JsonRpcLite.InProcess
                 }
 
                 byte[] requestData = null;
-                int dataLength = 0;
-                bool rent = false;
+                var dataLength = 0;
+                var rent = false;
                 if (typeof(T) == typeof(string))
                 {
                     var requestString = (string)Convert.ChangeType(request, typeof(string));
@@ -81,7 +81,16 @@ namespace JsonRpcLite.InProcess
                         dataLength = Encoding.UTF8.GetMaxByteCount(requestString.Length);
                         requestData = ArrayPool<byte>.Shared.Rent(dataLength);
                         rent = true;
-                        dataLength = Encoding.UTF8.GetBytes(requestString, requestData);
+                        unsafe
+                        {
+                            fixed (char* c = requestString)
+                            {
+                                fixed (byte* b = requestData)
+                                {
+                                    dataLength = Encoding.UTF8.GetBytes(c, requestString.Length, b, dataLength);
+                                }
+                            }
+                        }
                         if (Logger.DebugMode)
                         {
                             Logger.WriteDebug($"Receive request data:{requestString}");
@@ -111,11 +120,20 @@ namespace JsonRpcLite.InProcess
                         if (typeof(T) == typeof(string))
                         {
                             var responseString = Encoding.UTF8.GetString(responseData);
+                            if (Logger.DebugMode)
+                            {
+                                Logger.WriteDebug($"Response data sent:{responseString}");
+                            }
                             return (T)Convert.ChangeType(responseString, typeof(T));
                         }
 
                         if (typeof(T) == typeof(byte[]))
                         {
+                            if (Logger.DebugMode)
+                            {
+                                var responseString = Encoding.UTF8.GetString(responseData);
+                                Logger.WriteDebug($"Response data sent:{responseString}");
+                            }
                             return (T) Convert.ChangeType(responseData, typeof(T));
                         }
                     }

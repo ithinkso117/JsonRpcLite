@@ -20,10 +20,19 @@ namespace JsonRpcLite.Utilities
 
         public Utf8StringData(string str)
         {
-            var dataLengthToRent = Encoding.UTF8.GetMaxByteCount(str.Length);
-            _data = ArrayPool<byte>.Shared.Rent(dataLengthToRent);
-            var dataLength = Encoding.UTF8.GetBytes(str, _data);
-            Stream = new MemoryStream(_data, 0, dataLength);
+            var maxDataLength = Encoding.UTF8.GetMaxByteCount(str.Length);
+            _data = ArrayPool<byte>.Shared.Rent(maxDataLength);
+            unsafe
+            {
+                fixed (char* c = str)
+                {
+                    fixed (byte* b = _data)
+                    {
+                        var dataLength = Encoding.UTF8.GetBytes(c, str.Length, b, maxDataLength);
+                        Stream = new MemoryStream(_data, 0, dataLength);
+                    }
+                }
+            }
         }
 
         ~Utf8StringData()

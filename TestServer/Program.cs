@@ -34,24 +34,24 @@ namespace TestServer
         }
 
 
-        public static Task Process(string jsonRpc)
+        public static Task Process(string reqeustStr)
         {
            //return Task.Factory.StartNew(()=>Server.ProcessAsync("test", "v1", jsonRpc).Wait());
-           return Server.ProcessAsync("test", "v1", jsonRpc);
+           return Server.ProcessAsync("test", "v1", reqeustStr);
         }
 
         private static void Benchmark(string[] testData)
         {
             Console.WriteLine("Starting benchmark");
-            var cnt = 50;
+            var count = 50;
             var iterations = 7;
             for (int iteration = 1; iteration <= iterations; iteration++)
             {
-                cnt *= iteration;
-                var tasks = new Task[cnt];
+                count *= iteration;
+                var tasks = new Task[count];
                 var sw = Stopwatch.StartNew();
 
-                for (int i = 0; i < cnt; i += 5)
+                for (int i = 0; i < count; i += 5)
                 {
                     tasks[i] = Process(testData[0]);
                     tasks[i + 1] = Process(testData[1]);
@@ -65,7 +65,7 @@ namespace TestServer
                     task.Dispose();
                 }
                 sw.Stop();
-                Console.WriteLine("processed {0:N0} rpc in \t {1:N0}ms for \t {2:N} rpc/sec", cnt, sw.ElapsedMilliseconds, cnt * 1000d / sw.ElapsedMilliseconds);
+                Console.WriteLine("processed {0:N0} rpc in \t {1:N0}ms for \t {2:N} rpc/sec", count, sw.ElapsedMilliseconds, count * 1000d / sw.ElapsedMilliseconds);
             }
 
 

@@ -19,7 +19,7 @@ namespace JsonRpcLite.Utilities
         /// <param name="element">The JsonElement to convert.</param>
         /// <returns>The converted JsonRpcHttpRequest</returns>
         private static JsonRpcRequest DecodeRequest(JsonElement element)
-        {
+        {                           
             string parameters = null;
             object id = null;
             if (element.TryGetProperty("jsonrpc", out var versionElement))
