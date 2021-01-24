@@ -245,7 +245,7 @@ namespace JsonRpcLite.Network
                                 using(var outputStream = new GZipStream(memoryStream, CompressionMode.Compress))
                                 {
                                     outputStream.Write(outputData);
-                                    outputData = memoryStream.ToArray();
+                                    outputData = memoryStream.GetBuffer();
                                 }
                             }
 
@@ -258,7 +258,7 @@ namespace JsonRpcLite.Network
                                 using(var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress))
                                 {
                                     outputStream.Write(outputData);
-                                    outputData = memoryStream.ToArray();
+                                    outputData = memoryStream.GetBuffer();
                                 }
                             }
                         }
