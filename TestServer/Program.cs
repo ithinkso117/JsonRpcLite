@@ -18,13 +18,8 @@ namespace TestServer
         };
         private static readonly JsonRpcInProcessServer Server = new();
 
-        static void Main()
+        static void Main(string[] args)
         {
-            //Logger.DebugMode = true;
-            //Logger.UseDefaultWriter();
-
-            //ThreadPool.SetMinThreads(500000, 500000);
-
             for (var i = 0; i < 20; i++)
             {
                 Benchmark(TestData);
@@ -37,7 +32,12 @@ namespace TestServer
 
         public static Task Process(string requestStr)
         {
-            return Server.BenchmarkProcessAsync("test", "v1", requestStr);
+            return Task.Factory.StartNew(()=>
+            {
+                var task = Server.BenchmarkProcessAsync("test", "v1", requestStr);
+                task.Wait();
+                task.Dispose();
+            });
         }
 
         private static void Benchmark(string[] testData)
