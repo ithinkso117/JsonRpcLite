@@ -224,23 +224,24 @@ namespace JsonRpcLite.Utilities
                 }
                 default:
                 {
-                    var responseDataList = new List<Dictionary<string, object>>();
-                    var resultDataList = new List<JsonRpcResultData>();
+                    var responseDataArray = new Dictionary<string, object>[responses.Length];
+                    var resultDataArray = new JsonRpcResultData[responses.Length];
                     try
                     {
-                        foreach (var response in responses)
+                        for (var i = 0; i < responses.Length; i++)
                         {
+                            var response = responses[i];
                             var resultData = ResultDataPool.Get();
                             resultData.Id = response.Id;
                             resultData.Data = response.Result;
-                            responseDataList.Add(resultData.GetData());
-                            resultDataList.Add(resultData);
+                            responseDataArray[i] = resultData.GetData();
+                            resultDataArray[i] = resultData;
                         }
-                        await JsonSerializer.SerializeAsync(stream, responseDataList.ToArray(),JsonRpcConvertSettings.SerializerOptions);
+                        await JsonSerializer.SerializeAsync(stream, responseDataArray, JsonRpcConvertSettings.SerializerOptions);
                     }
                     finally
                     {
-                        foreach (var resultData in resultDataList)
+                        foreach (var resultData in resultDataArray)
                         {
                             ResultDataPool.Return(resultData);
                         }

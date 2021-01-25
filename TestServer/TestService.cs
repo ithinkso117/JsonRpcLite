@@ -2,9 +2,30 @@
 
 namespace TestServer
 {
+    public class SubCls
+    {
+        public string PP { get; set; }
+
+        public int QQ { get; set; }
+    }
+
+    public class ComplexObject
+    {
+        public string Name { get; set; }
+
+        public SubCls Sub { get; set; }
+    }
+
     [RpcService("test")]
     public class CalculatorService : JsonRpcService
     {
+        [RpcMethod]
+        public ComplexObject testComplex(ComplexObject cb)
+        {
+            return cb;
+        }
+
+
         [RpcMethod]
         public double add(double l, double r)
         {

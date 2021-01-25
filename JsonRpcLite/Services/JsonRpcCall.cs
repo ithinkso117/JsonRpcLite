@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using JsonRpcLite.Utilities;
 
@@ -25,6 +26,12 @@ namespace JsonRpcLite.Services
         /// Gets the information for the parameters. 
         /// </summary>
         public IReadOnlyList<JsonRpcCallParameter> Parameters { get; }
+
+
+        /// <summary>
+        /// Gets the method's return type.
+        /// </summary>
+        public Type ReturnType => _method.ReturnType;
 
 
         /// <summary>

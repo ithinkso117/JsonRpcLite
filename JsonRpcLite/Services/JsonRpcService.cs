@@ -10,9 +10,40 @@ namespace JsonRpcLite.Services
     {
         private readonly Dictionary<string, JsonRpcCall> _rpcCalls = new();
 
+        /// <summary>
+        /// Gets the service name.
+        /// </summary>
+        internal string Name { get; private set; }
+
+        /// <summary>
+        /// Gets the SmdData of this service.
+        /// </summary>
+        internal byte[] SmdData { get; private set; }
+
+
         public JsonRpcService()
         {
+            var type = GetType();
+            Name = $"{type.Name}";
+            var serviceAttributes = type.GetCustomAttributes(typeof(RpcServiceAttribute), false);
+            if (serviceAttributes.Length > 1)
+            {
+                throw new InvalidOperationException($"Service {Name} defined more than one rpc service attributes.");
+            }
+            if (serviceAttributes.Length > 0)
+            {
+                var serviceAttribute = (RpcServiceAttribute)serviceAttributes[0];
+                if (!string.IsNullOrEmpty(serviceAttribute.Name))
+                {
+                    Name = $"{serviceAttribute.Name.ToLower()}";
+                    if (!string.IsNullOrWhiteSpace(serviceAttribute.Version))
+                    {
+                        Name = $"{serviceAttribute.Name.ToLower()}/{serviceAttribute.Version}";
+                    }
+                }
+            }
             RegisterCalls();
+            GenerateSmd();
         }
 
         private void RegisterCalls()
@@ -25,6 +56,36 @@ namespace JsonRpcLite.Services
 
         }
 
+
+        /// <summary>
+        /// Generate the smd data.
+        /// </summary>
+        private void GenerateSmd()
+        {
+            var smdService = new SmdService();
+            foreach (var rpcCall in _rpcCalls.Values)
+            {
+                var method = new SmdMethod(); ;
+                var methodName = rpcCall.Name;
+                if (rpcCall.ReturnType != null)
+                {
+                    method.Returns = SmdType.CreateReturnType(rpcCall.ReturnType);
+                }
+                method.Target = Name;
+                var parameters = new SmdType[rpcCall.Parameters.Count];
+                var index = 0;
+                foreach (var rpcCallParameter in rpcCall.Parameters)
+                {
+                    var smdParameter = SmdType.CreateParameterType(rpcCallParameter.Name, rpcCallParameter.ParameterType);
+                    parameters[index] = smdParameter;
+                    index++;
+                }
+                method.Parameters = parameters;
+                smdService.AddMethod(methodName, method);
+            }
+
+            SmdData = smdService.ToUtf8JsonAsync().Result;
+        }
 
         private void RegisterAvailableCalls(MethodInfo[] methods)
         {

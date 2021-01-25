@@ -20,7 +20,7 @@ namespace JsonRpcLite.Network
         /// <param name="service">The service to handle the context</param>
         /// <param name="context">The context for communication</param>
         /// <returns>Void</returns>
-        public virtual async Task DispatchCall(JsonRpcService service, object context)
+        public virtual async Task DispatchCallAsync(JsonRpcService service, object context)
         {
             if (context is HttpListenerContext httpListenerContext)
             {
@@ -162,7 +162,7 @@ namespace JsonRpcLite.Network
             {
                 var request = requests[0];
                 var response = await GetResponseAsync(service, request).ConfigureAwait(false);
-                await WriteResponse(context, response).ConfigureAwait(false);
+                await WriteResponseAsync(context, response).ConfigureAwait(false);
 
             }
             else
@@ -180,7 +180,7 @@ namespace JsonRpcLite.Network
 
                 if (responseList.Count > 0)
                 {
-                    await WriteResponses(context, responseList.ToArray()).ConfigureAwait(false);
+                    await WriteResponsesAsync(context, responseList.ToArray()).ConfigureAwait(false);
                 }
                 else
                 {
@@ -196,7 +196,7 @@ namespace JsonRpcLite.Network
         /// <param name="context">The context of the http.</param>
         /// <param name="response">The JsonRpcHttpResponse to write.</param>
         /// <returns>Void</returns>
-        public async Task WriteResponse(object context, JsonRpcResponse response)
+        public async Task WriteResponseAsync(object context, JsonRpcResponse response)
         {
             var resultData = await JsonRpcCodec.EncodeResponsesAsync(new[] {response}).ConfigureAwait(false);
             await WriteResultAsync(context, resultData).ConfigureAwait(false);
@@ -208,7 +208,7 @@ namespace JsonRpcLite.Network
         /// <param name="context">The context of the http.</param>
         /// <param name="responses">A group of JsonRpcHttpResponses to write.</param>
         /// <returns>Void</returns>
-        public async Task WriteResponses(object context, JsonRpcResponse[] responses)
+        public async Task WriteResponsesAsync(object context, JsonRpcResponse[] responses)
         {
             var resultData = await JsonRpcCodec.EncodeResponsesAsync(responses).ConfigureAwait(false);
             await WriteResultAsync(context, resultData).ConfigureAwait(false);
@@ -223,22 +223,22 @@ namespace JsonRpcLite.Network
         /// <returns>Void</returns>
         protected virtual async Task WriteResultAsync(object context, byte[] result = null)
         {
-            if (context is HttpListenerContext httpHttpListenerContext)
+            if (context is HttpListenerContext httpListenerContext)
             {
                 try
                 {
-                    httpHttpListenerContext.Response.AddHeader("Server", "JsonRpcLite");
-                    httpHttpListenerContext.Response.Headers.Add("Access-Control-Allow-Origin", "*");
-                    httpHttpListenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
-                    httpHttpListenerContext.Response.ContentEncoding = Encoding.UTF8;
-                    httpHttpListenerContext.Response.ContentType = "application/json";
+                    httpListenerContext.Response.AddHeader("Server", "JsonRpcLite");
+                    httpListenerContext.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+                    httpListenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
+                    httpListenerContext.Response.ContentEncoding = Encoding.UTF8;
+                    httpListenerContext.Response.ContentType = "application/json";
                     if (result != null)
                     {
-                        httpHttpListenerContext.Response.ContentLength64 = result.Length;
-                        await httpHttpListenerContext.Response.OutputStream.WriteAsync(result).ConfigureAwait(false);
+                        httpListenerContext.Response.ContentLength64 = result.Length;
+                        await httpListenerContext.Response.OutputStream.WriteAsync(result).ConfigureAwait(false);
                     }
 
-                    httpHttpListenerContext.Response.Close();
+                    httpListenerContext.Response.Close();
                     if (Logger.DebugMode)
                     {
                         if (result != null)

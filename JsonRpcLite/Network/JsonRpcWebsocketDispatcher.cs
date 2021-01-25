@@ -21,7 +21,7 @@ namespace JsonRpcLite.Network
         /// <param name="service">The service to handle the context</param>
         /// <param name="context">The context for communication</param>
         /// <returns>Void</returns>
-        public override async Task DispatchCall(JsonRpcService service, object context)
+        public override async Task DispatchCallAsync(JsonRpcService service, object context)
         {
             if (context is WebSocketContext webSocketContext)
             {
@@ -73,7 +73,7 @@ namespace JsonRpcLite.Network
                 {
                     var request = requests[0];
                     var response = await GetResponseAsync(service, request).ConfigureAwait(false);
-                    await WriteResponse(context, response).ConfigureAwait(false);
+                    await WriteResponseAsync(context, response).ConfigureAwait(false);
 
                 }
                 else
@@ -91,7 +91,7 @@ namespace JsonRpcLite.Network
 
                     if (responseList.Count > 0)
                     {
-                        await WriteResponses(context, responseList.ToArray()).ConfigureAwait(false);
+                        await WriteResponsesAsync(context, responseList.ToArray()).ConfigureAwait(false);
                     }
                 }
             }

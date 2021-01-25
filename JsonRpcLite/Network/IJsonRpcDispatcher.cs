@@ -11,7 +11,7 @@ namespace JsonRpcLite.Network
         /// <param name="service">The service to handle the context</param>
         /// <param name="context">The context for communication</param>
         /// <returns>Void</returns>
-        Task DispatchCall(JsonRpcService service, object context);
+        Task DispatchCallAsync(JsonRpcService service, object context);
 
         /// <summary>
         /// Write response to remote side.
@@ -19,7 +19,7 @@ namespace JsonRpcLite.Network
         /// <param name="context">The context for communication</param>
         /// <param name="response">The response to write</param>
         /// <returns>Void</returns>
-        Task WriteResponse(object context, JsonRpcResponse response);
+        Task WriteResponseAsync(object context, JsonRpcResponse response);
 
         /// <summary>
         /// Write response to remote side.
@@ -27,6 +27,6 @@ namespace JsonRpcLite.Network
         /// <param name="context">The context for communication</param>
         /// <param name="responses">The responses to write</param>
         /// <returns>Void</returns>
-        Task WriteResponses(object context, JsonRpcResponse[] responses);
+        Task WriteResponsesAsync(object context, JsonRpcResponse[] responses);
     }
 }

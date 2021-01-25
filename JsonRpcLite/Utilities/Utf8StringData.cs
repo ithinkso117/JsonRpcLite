@@ -10,9 +10,7 @@ namespace JsonRpcLite.Utilities
     /// </summary>
     public class Utf8StringData : IDisposable
     {
-        private static readonly ObjectPool<Utf8StringData, string> Pool =
-            new ObjectPool<Utf8StringData, string>((str) => new Utf8StringData(str),
-                (data, str) => { data.Update(str); });
+        private static readonly ObjectPool<Utf8StringData, string> Pool = new((str) => new Utf8StringData(str),  (data, str) => { data.Update(str); });
 
         private bool _disposed;
         private int _memoryLength; 
@@ -83,8 +81,6 @@ namespace JsonRpcLite.Utilities
         public void Dispose()
         {
             Pool.Return(this);
-            //DoDispose();
-            //GC.SuppressFinalize(this);
         }
     }
 }

@@ -15,20 +15,25 @@ namespace JsonRpcLite.Network
     /// </summary>
     internal class JsonRpcHttpRouter
     {
+        private readonly ISmdHandler _smdHandler;
         private readonly Dictionary<string, JsonRpcService> _services = new();
         private readonly Dictionary<string, IJsonRpcDispatcher> _dispatchers = new();
 
         private readonly string _serverName;
+        private readonly bool _enableSmd;
 
-        public JsonRpcHttpRouter(string serverName = "")
+        public JsonRpcHttpRouter(string serverName = "", bool enableSmd = true)
         {
             _serverName = serverName ?? string.Empty;
             _serverName = _serverName.ToLower();
+            _enableSmd = enableSmd;
+            _smdHandler = new SmdHandler();
             _dispatchers.Add("http", new JsonRpcHttpDispatcher());
             _dispatchers.Add("websocket", new JsonRpcWebsocketDispatcher());
             RegisterServices();
             Logger.WriteInfo($"JsonRpc Router created with application name:[{serverName}]");
         }
+
 
 
         /// <summary>
@@ -41,24 +46,9 @@ namespace JsonRpcLite.Network
             {
                 foreach (var serviceType in serviceTypes)
                 {
-                    var serviceAttributes = serviceType.GetCustomAttributes(typeof(RpcServiceAttribute), false);
-                    if (serviceAttributes.Length > 1)
-                    {
-                        throw new InvalidOperationException($"Method {serviceType.Name} defined more than one rpc service attributes.");
-                    }
-
-                    if (serviceAttributes.Length > 0)
-                    {
-                        var serviceAttribute = (RpcServiceAttribute) serviceAttributes[0];
-                        if (string.IsNullOrEmpty(serviceAttribute.Name)) continue;
-                        var key = $"{serviceAttribute.Name.ToLower()}";
-                        if (!string.IsNullOrWhiteSpace(serviceAttribute.Version))
-                        {
-                            key = $"{serviceAttribute.Name.ToLower()}/{serviceAttribute.Version}";
-                        }
-                        _services.Add(key, (JsonRpcService)serviceType.New());
-                        Logger.WriteInfo($"Register service:{key}");
-                    }
+                    var service = (JsonRpcService)serviceType.New();
+                    _services.Add(service.Name, service);
+                    Logger.WriteInfo($"Register service:{service.Name}");
                 }
             }
         }
@@ -123,7 +113,7 @@ namespace JsonRpcLite.Network
             IJsonRpcDispatcher dispatcher;
             object context;
             if (httpListenerContext.Request.IsWebSocketRequest)
-            { 
+            {
                 context = await httpListenerContext.AcceptWebSocketAsync("jsonrpc");
                 dispatcher = _dispatchers["websocket"];
             }
@@ -132,6 +122,7 @@ namespace JsonRpcLite.Network
                 context = httpListenerContext;
                 dispatcher = _dispatchers["http"];
             }
+
             try
             {
                 var serviceInfo = GetRpcServiceInfo(httpListenerContext.Request.Url);
@@ -147,7 +138,17 @@ namespace JsonRpcLite.Network
                     Logger.WriteWarning($"Service for request: {httpListenerContext.Request.Url} not found.");
                     throw new ServerErrorException("Service does not exist.", $"Service [{key}] does not exist.");
                 }
-                await dispatcher.DispatchCall(service, context);
+
+                var httpMethod = httpListenerContext.Request.HttpMethod.ToLower();
+                if (_enableSmd && httpMethod == "get")
+                {
+                    context = httpListenerContext;
+                    await _smdHandler.HandleAsync(service, context);
+                }
+                else
+                {
+                    await dispatcher.DispatchCallAsync(service, context);
+                }
             }
             catch (Exception ex)
             {
@@ -163,7 +164,8 @@ namespace JsonRpcLite.Network
                     var serverError = new InternalErrorException();
                     response.WriteResult(serverError);
                 }
-                await dispatcher.WriteResponse(context, response);
+
+                await dispatcher.WriteResponseAsync(context, response);
             }
         }
     }

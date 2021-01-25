@@ -8,7 +8,11 @@ namespace JsonRpcLite.Utilities
         /// <summary>
         /// Use UnsafeRelaxedJsonEscaping for compatible with NewtonSoft.
         /// </summary>
-        public static readonly JsonSerializerOptions SerializerOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        public static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, 
+            IgnoreNullValues = true
+        };
 
         /// <summary>
         /// Use AllowTrailingCommas for compatible with most Json formats.

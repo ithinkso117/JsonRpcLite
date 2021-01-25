@@ -30,24 +30,9 @@ namespace JsonRpcLite.InProcess
             {
                 foreach (var serviceType in serviceTypes)
                 {
-                    var serviceAttributes = serviceType.GetCustomAttributes(typeof(RpcServiceAttribute), false);
-                    if (serviceAttributes.Length > 1)
-                    {
-                        throw new InvalidOperationException($"Method {serviceType.Name} defined more than one rpc service attributes.");
-                    }
-
-                    if (serviceAttributes.Length > 0)
-                    {
-                        var serviceAttribute = (RpcServiceAttribute)serviceAttributes[0];
-                        if (string.IsNullOrEmpty(serviceAttribute.Name)) continue;
-                        var key = $"{serviceAttribute.Name.ToLower()}";
-                        if (!string.IsNullOrWhiteSpace(serviceAttribute.Version))
-                        {
-                            key = $"{serviceAttribute.Name.ToLower()}/{serviceAttribute.Version}";
-                        }
-                        _services.Add(key, (JsonRpcService)serviceType.New());
-                        Logger.WriteInfo($"Register service:{key}");
-                    }
+                    var service = (JsonRpcService)serviceType.New();
+                    _services.Add(service.Name, service);
+                    Logger.WriteInfo($"Register service:{service.Name}");
                 }
             }
         }
