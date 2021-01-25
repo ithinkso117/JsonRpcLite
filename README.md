@@ -13,10 +13,11 @@ This is a simple JsonRpc server implementation, it's simple, but fast!
 - [ ] Code generator for generate client code(C#, dart, javascript...).
 - [ ] Interface based mode for C# development.
 
+## Performance
 
 Here we have a benchmark compare with JSON-RPC.NET.
 
-## JsonRpcLite
+# JsonRpcLite
 ```dos
 Starting benchmark
 processed 50 rpc in      0ms for         ∞ rpc/sec
@@ -29,7 +30,7 @@ processed 252,000 rpc in         581ms for       433,734.94 rpc/sec
 Finished benchmark...
 ```
 
-## JSON-RPC.NET
+# JSON-RPC.NET
 ```dos
 Starting benchmark
 processed 50 rpc in      0ms for         ∞ rpc/sec
