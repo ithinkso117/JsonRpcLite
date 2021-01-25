@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -232,10 +233,38 @@ namespace JsonRpcLite.Network
                     httpListenerContext.Response.StatusCode = (int) HttpStatusCode.OK;
                     httpListenerContext.Response.ContentEncoding = Encoding.UTF8;
                     httpListenerContext.Response.ContentType = "application/json";
-                    if (result != null)
+                    var outputData = result;
+                    if (outputData != null)
                     {
-                        httpListenerContext.Response.ContentLength64 = result.Length;
-                        await httpListenerContext.Response.OutputStream.WriteAsync(result).ConfigureAwait(false);
+                        var acceptEncoding = httpListenerContext.Request.Headers["Accept-Encoding"];
+                        if (acceptEncoding.Contains("gzip")) 
+                        {
+                            httpListenerContext.Response.AddHeader("Content-Encoding", "gzip");
+                            using(var memoryStream = new MemoryStream())
+                            {
+                                using(var outputStream = new GZipStream(memoryStream, CompressionMode.Compress))
+                                {
+                                    outputStream.Write(outputData);
+                                    outputData = memoryStream.GetBuffer();
+                                }
+                            }
+
+                        }
+                        else if (acceptEncoding.Contains("deflate")) 
+                        {
+                            httpListenerContext.Response.AddHeader("Content-Encoding", "deflate");
+                            using(var memoryStream = new MemoryStream())
+                            {
+                                using(var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress))
+                                {
+                                    outputStream.Write(outputData);
+                                    outputData = memoryStream.GetBuffer();
+                                }
+                            }
+                        }
+
+                        httpListenerContext.Response.ContentLength64 = outputData.Length;
+                        await httpListenerContext.Response.OutputStream.WriteAsync(outputData).ConfigureAwait(false);
                     }
 
                     httpListenerContext.Response.Close();
