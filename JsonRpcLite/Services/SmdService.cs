@@ -54,7 +54,7 @@ namespace JsonRpcLite.Services
                     || name == "system.object"
                     || name == "system.type"
                     // || name == "system.datetime"
-                    || name == "system.reflection.membertypes")
+                    )
                 {
                     return true;
                 }
@@ -93,7 +93,7 @@ namespace JsonRpcLite.Services
         /// <returns></returns>
         private static SmdType Create(string name, Type type)
         {
-            //TODO support Generic types.
+            //TODO support Generic types, otherwise need to check there is no Generic types in services.
             if (IsSimpleType(type))
             {
                 return new SmdType { Name = name, Type = type.Name.ToLower() };
@@ -179,7 +179,7 @@ namespace JsonRpcLite.Services
         {
             await using var stream = new MemoryStream();
             await JsonSerializer.SerializeAsync(stream, this, Options);
-            return stream.ToArray();
+            return stream.GetBuffer();
         }
 
         /// <summary>

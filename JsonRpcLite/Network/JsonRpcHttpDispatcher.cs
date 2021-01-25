@@ -237,30 +237,21 @@ namespace JsonRpcLite.Network
                     if (outputData != null)
                     {
                         var acceptEncoding = httpListenerContext.Request.Headers["Accept-Encoding"];
-                        if (acceptEncoding.Contains("gzip")) 
+                        if (acceptEncoding != null && acceptEncoding.Contains("gzip")) 
                         {
                             httpListenerContext.Response.AddHeader("Content-Encoding", "gzip");
-                            using(var memoryStream = new MemoryStream())
-                            {
-                                using(var outputStream = new GZipStream(memoryStream, CompressionMode.Compress))
-                                {
-                                    outputStream.Write(outputData);
-                                    outputData = memoryStream.GetBuffer();
-                                }
-                            }
-
+                            await using var memoryStream = new MemoryStream();
+                            await using var outputStream = new GZipStream(memoryStream, CompressionMode.Compress);
+                            outputStream.Write(outputData);
+                            outputData = memoryStream.GetBuffer();
                         }
-                        else if (acceptEncoding.Contains("deflate")) 
+                        else if (acceptEncoding != null && acceptEncoding.Contains("deflate")) 
                         {
                             httpListenerContext.Response.AddHeader("Content-Encoding", "deflate");
-                            using(var memoryStream = new MemoryStream())
-                            {
-                                using(var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress))
-                                {
-                                    outputStream.Write(outputData);
-                                    outputData = memoryStream.GetBuffer();
-                                }
-                            }
+                            await using var memoryStream = new MemoryStream();
+                            await using var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress);
+                            outputStream.Write(outputData);
+                            outputData = memoryStream.GetBuffer();
                         }
 
                         httpListenerContext.Response.ContentLength64 = outputData.Length;
@@ -279,7 +270,7 @@ namespace JsonRpcLite.Network
                 }
                 catch (Exception ex)
                 {
-                    Logger.WriteWarning($"Write result back to client error:{ex}");
+                    Logger.WriteWarning($"Write result back to client error:{ex.Format()}");
                 }
             }
             else
