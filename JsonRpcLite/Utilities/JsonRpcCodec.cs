@@ -249,7 +249,7 @@ namespace JsonRpcLite.Utilities
                     break;
                 }
             }
-            return stream.GetBuffer();
+            return stream.ToArray();
         }
 
     }

@@ -242,16 +242,18 @@ namespace JsonRpcLite.Network
                             httpListenerContext.Response.AddHeader("Content-Encoding", "gzip");
                             await using var memoryStream = new MemoryStream();
                             await using var outputStream = new GZipStream(memoryStream, CompressionMode.Compress);
-                            outputStream.Write(outputData);
-                            outputData = memoryStream.GetBuffer();
+                            await outputStream.WriteAsync(outputData);
+                            await outputStream.FlushAsync();
+                            outputData = memoryStream.ToArray();
                         }
                         else if (acceptEncoding != null && acceptEncoding.Contains("deflate")) 
                         {
                             httpListenerContext.Response.AddHeader("Content-Encoding", "deflate");
                             await using var memoryStream = new MemoryStream();
                             await using var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress);
-                            outputStream.Write(outputData);
-                            outputData = memoryStream.GetBuffer();
+                            await outputStream.WriteAsync(outputData);
+                            await outputStream.FlushAsync();
+                            outputData = memoryStream.ToArray();
                         }
 
                         httpListenerContext.Response.ContentLength64 = outputData.Length;

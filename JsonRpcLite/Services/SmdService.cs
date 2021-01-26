@@ -220,7 +220,7 @@ namespace JsonRpcLite.Services
         {
             await using var stream = new MemoryStream();
             await JsonSerializer.SerializeAsync(stream, this, _options);
-            return stream.GetBuffer();
+            return stream.ToArray();
         }
 
         /// <summary>

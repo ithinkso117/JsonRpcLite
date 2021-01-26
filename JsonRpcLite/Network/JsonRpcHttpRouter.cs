@@ -62,6 +62,7 @@ namespace JsonRpcLite.Network
         {
             var serverName = string.Empty;
             string serviceName;
+            bool isSmdRequest = false;
             var url = $"{requestUri.AbsolutePath.Trim('/')}";
             var urlParts = url.Split('/');
             if (urlParts.Length < 1 || urlParts.Length > 2) return null;
@@ -70,14 +71,24 @@ namespace JsonRpcLite.Network
                 //serverName/ServiceName
                 serverName = urlParts[0].ToLower();
                 serviceName = urlParts[1].ToLower();
+                if (serviceName.Contains('.') && serviceName.EndsWith("smd"))
+                {
+                    serviceName = serviceName.Replace(".smd", String.Empty);
+                    isSmdRequest = true;
+                }
             }
             else
             {
                 serviceName = urlParts[0].ToLower();
+                if (serviceName.Contains('.') && serviceName.EndsWith("smd"))
+                {
+                    serviceName = serviceName.Replace(".smd", String.Empty);
+                    isSmdRequest = true;
+                }
             }
 
             //Check if the application is matched.
-            return _serverName != serverName ? null : new JsonRpcServiceInfo(serviceName);
+            return _serverName != serverName ? null : new JsonRpcServiceInfo(serviceName, isSmdRequest);
         }
 
 
@@ -117,7 +128,7 @@ namespace JsonRpcLite.Network
                 }
 
                 var httpMethod = httpListenerContext.Request.HttpMethod.ToLower();
-                if (_enableSmd && httpMethod == "get")
+                if (_enableSmd && serviceInfo.IsSmdRequest && httpMethod == "get")
                 {
                     context = httpListenerContext;
                     await _smdHandler.HandleAsync(service, context);
