@@ -13,29 +13,17 @@ namespace JsonRpcLite.Services
         public string Name { get; }
 
         /// <summary>
-        /// Gets the version of the handler.
+        /// Create attribute for given name.
         /// </summary>
-        public string Version { get; }
-
-        /// <summary>
-        /// Router to api handler with url string
-        /// </summary>
-        /// <param name="name">The url string</param>
+        /// <param name="name">The service name</param>
         public RpcServiceAttribute(string name)
         {
-            Version = "v1";
             Name = name;
         }
 
-        /// <summary>
-        /// Router to api handler with url string
-        /// </summary>
-        /// <param name="name">The url string</param>
-        /// <param name="version">The api version</param>
-        public RpcServiceAttribute(string name, string version)
+        public RpcServiceAttribute()
         {
-            Name = name;
-            Version = version;
+            Name = string.Empty;
         }
     }
 

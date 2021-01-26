@@ -7,15 +7,9 @@
         /// </summary>
         public string Name { get; }
 
-        /// <summary>
-        /// Gets the version of the service. 
-        /// </summary>
-        public string Version { get; }
-
-        public JsonRpcServiceInfo(string name, string version)
+        public JsonRpcServiceInfo(string name)
         {
             Name = name;
-            Version = version;
         }
     }
 }

@@ -35,11 +35,7 @@ namespace JsonRpcLite.Services
                 var serviceAttribute = (RpcServiceAttribute)serviceAttributes[0];
                 if (!string.IsNullOrEmpty(serviceAttribute.Name))
                 {
-                    Name = $"{serviceAttribute.Name.ToLower()}";
-                    if (!string.IsNullOrWhiteSpace(serviceAttribute.Version))
-                    {
-                        Name = $"{serviceAttribute.Name.ToLower()}/{serviceAttribute.Version}";
-                    }
+                    Name = $"{serviceAttribute.Name}";
                 }
             }
             RegisterCalls();
@@ -62,22 +58,26 @@ namespace JsonRpcLite.Services
         /// </summary>
         private void GenerateSmd()
         {
-            var smdService = new SmdService();
+            var smdService = new SmdService {Target = Name};
             foreach (var rpcCall in _rpcCalls.Values)
             {
                 var method = new SmdMethod(); ;
                 var methodName = rpcCall.Name;
                 if (rpcCall.ReturnType != null)
                 {
-                    method.Returns = SmdType.CreateReturnType(rpcCall.ReturnType);
+                    var type = smdService.CreateSmdType(rpcCall.ReturnType);
+                    method.Returns = type.Name;
                 }
-                method.Target = Name;
-                var parameters = new SmdType[rpcCall.Parameters.Count];
+                var parameters = new SmdParameter[rpcCall.Parameters.Count];
                 var index = 0;
                 foreach (var rpcCallParameter in rpcCall.Parameters)
                 {
-                    var smdParameter = SmdType.CreateParameterType(rpcCallParameter.Name, rpcCallParameter.ParameterType);
-                    parameters[index] = smdParameter;
+                    var type = smdService.CreateSmdType(rpcCallParameter.ParameterType);
+                    var parameter = new SmdParameter
+                    {
+                        Name = rpcCallParameter.Name, Type = type.Name
+                    };
+                    parameters[index] = parameter;
                     index++;
                 }
                 method.Parameters = parameters;

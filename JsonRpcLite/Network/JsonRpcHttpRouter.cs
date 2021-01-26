@@ -11,7 +11,7 @@ using JsonRpcLite.Utilities;
 namespace JsonRpcLite.Network
 {
     /// <summary>
-    /// JsonRpcHttpRouter will find all implemented handler which inherit from the BaseHandler, and register into itself.
+    /// JsonRpcHttpRouter will find all implemented service which inherit from the JsonRpcService, and register into itself.
     /// </summary>
     internal class JsonRpcHttpRouter
     {
@@ -61,46 +61,23 @@ namespace JsonRpcLite.Network
         private JsonRpcServiceInfo GetRpcServiceInfo(Uri requestUri)
         {
             var serverName = string.Empty;
-            string version;
             string serviceName;
             var url = $"{requestUri.AbsolutePath.Trim('/')}";
             var urlParts = url.Split('/');
-            if (!string.IsNullOrEmpty(_serverName))
+            if (urlParts.Length < 1 || urlParts.Length > 2) return null;
+            if (urlParts.Length == 2)
             {
-                if (urlParts.Length < 2 || urlParts.Length > 3) return null;
-                if (urlParts.Length == 3)
-                {
-                    //serverName/ServiceName/Version
-                    serverName = urlParts[0].ToLower();
-                    serviceName = urlParts[1].ToLower();
-                    version = urlParts[2].ToLower();
-                }
-                else
-                {
-                    //serverName/ServiceName
-                    serverName = urlParts[0].ToLower();
-                    serviceName = urlParts[1].ToLower();
-                    version = "v1";
-                }
+                //serverName/ServiceName
+                serverName = urlParts[0].ToLower();
+                serviceName = urlParts[1].ToLower();
             }
             else
             {
-                if (urlParts.Length < 1 || urlParts.Length > 2) return null;
-                if (urlParts.Length == 2)
-                {
-                    //ServiceName/Version
-                    serviceName = urlParts[0].ToLower();
-                    version = urlParts[1].ToLower();
-                }
-                else
-                {
-                    //ServiceName
-                    serviceName = urlParts[0].ToLower();
-                    version = "v1";
-                }
+                serviceName = urlParts[0].ToLower();
             }
+
             //Check if the application is matched.
-            return _serverName != serverName ? null : new JsonRpcServiceInfo(serviceName, version);
+            return _serverName != serverName ? null : new JsonRpcServiceInfo(serviceName);
         }
 
 
@@ -132,7 +109,7 @@ namespace JsonRpcLite.Network
                     throw new ServerErrorException("Service does not exist.", $"Service [{null}] does not exist.");
                 }
 
-                var key = $"{serviceInfo.Name}/{serviceInfo.Version}";
+                var key = serviceInfo.Name;
                 if (!_services.TryGetValue(key, out var service))
                 {
                     Logger.WriteWarning($"Service for request: {httpListenerContext.Request.Url} not found.");

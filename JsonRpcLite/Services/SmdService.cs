@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace JsonRpcLite.Services
@@ -12,16 +11,105 @@ namespace JsonRpcLite.Services
     internal class SmdType
     {
         /// <summary>
-        /// Get the name of the SmdType, this property is only used when the SmdType is a parameter type.
+        /// Get the name of the SmdType.
         /// </summary>
-        [JsonPropertyName("name")]
         public string Name { get; set; }
 
         /// <summary>
         /// Get the type of the SmdType.
         /// </summary>
-        [JsonPropertyName("type")]
         public object Type { get; set; }
+
+    }
+
+
+    internal class SmdParameter
+    {
+        /// <summary>
+        /// Gets or sets the name of the parameter.
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the name of the type.
+        /// </summary>
+        public string Type { get; set; } 
+    }
+
+    internal class SmdMethod
+    {
+        /// <summary>
+        /// Gets or sets the transport of the method.
+        /// </summary>
+        public string Transport { get; set; } = "POST";
+
+        /// <summary>
+        /// Gets or sets the envelope of the method.
+        /// </summary>
+        public string Envelope { get; set; } = "JSON-RPC-2.0";
+
+        /// <summary>
+        /// Gets or sets the parameters of the method.
+        /// </summary>
+        public SmdParameter[] Parameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the returns of the method.
+        /// </summary>
+        public string Returns { get; set; }
+    }
+
+    internal class SmdService
+    {
+        private class SimpleSmdType : SmdType
+        {
+
+        }
+
+        private class ComplexSmdType : SmdType
+        {
+
+        }
+
+
+        private readonly JsonSerializerOptions _options = new()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true,
+            IgnoreNullValues = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
+        private readonly List<SmdType> _types = new();
+        private readonly Dictionary<string, SmdMethod> _methods = new();
+
+
+        /// <summary>
+        /// Gets or sets the transport of the method.
+        /// </summary>
+        public string Transport { get; set; } = "GET";
+
+        /// <summary>
+        /// Gets or sets the envelope of the method.
+        /// </summary>
+        public string Envelope { get; set; } = "URL";
+
+        /// <summary>
+        /// Gets or sets the target of the method.
+        /// </summary>
+        public string Target { get; set; }
+
+
+        /// <summary>
+        /// Gets the types used in this service.
+        /// </summary>
+        public Dictionary<string, SmdType> Types => _types.ToDictionary(type=> type.Name, type => type);
+
+        /// <summary>
+        /// The services which contains all methods.
+        /// </summary>
+        public Dictionary<string, SmdMethod> Services => _methods;
+
 
         /// <summary>
         /// Check if the type is a simple type.
@@ -54,7 +142,7 @@ namespace JsonRpcLite.Services
                     || name == "system.object"
                     || name == "system.type"
                     // || name == "system.datetime"
-                    )
+                )
                 {
                     return true;
                 }
@@ -63,103 +151,56 @@ namespace JsonRpcLite.Services
             return false;
         }
 
-        /// <summary>
-        /// Create a smd type for return type.
-        /// </summary>
-        /// <param name="type">The type to be created.</param>
-        /// <returns>The created SmdType.</returns>
-        public static SmdType CreateReturnType(Type type)
-        {
-            return Create(null, type);
-        }
-
-        /// <summary>
-        /// Create a smd type for parameter type.
-        /// </summary>
-        /// <param name="name">The name of the parameter.</param>
-        /// <param name="type">The type of the parameter.</param>
-        /// <returns>The created SmdType.</returns>
-        public static SmdType CreateParameterType(string name, Type type)
-        {
-            return Create(name, type);
-        }
-
-
-        /// <summary>
-        /// Create a SmdType by given name and type.
-        /// </summary>
-        /// <param name="name">The name of the smd type, it should be null when it is a return type.</param>
-        /// <param name="type">The type of the smd type.</param>
-        /// <returns></returns>
-        private static SmdType Create(string name, Type type)
+        public SmdType CreateSmdType(Type type)
         {
             //TODO support Generic types, otherwise need to check there is no Generic types in services.
             if (IsSimpleType(type))
             {
-                return new SmdType { Name = name, Type = type.Name.ToLower() };
+                var simpleSmdType = new SimpleSmdType{Name = type.Name, Type = type.Name.ToLower()};
+                AddSimpleType(simpleSmdType);
+                return simpleSmdType;
             }
 
-            var properties = type.GetProperties();
-            var types = new Dictionary<string, SmdType>();
+            var properties = type.GetProperties().Where(x=>x.GetAccessors().Any(y=>y.IsPublic)).ToArray();
+            var propertyTypes = new Dictionary<string, string>();
             foreach (var item in properties)
             {
-                if (item.GetAccessors().Any(x => x.IsPublic))
+                SmdType propertyType;
+                if (IsSimpleType(item.PropertyType))
                 {
-                    //Child property can not be return type.
-                    types.Add(item.Name, Create(null,item.PropertyType));
+                    var simpleSmdType = new SimpleSmdType{Name = item.PropertyType.Name, Type = item.PropertyType.Name.ToLower()};
+                    AddSimpleType(simpleSmdType);
+                    propertyType = simpleSmdType;
                 }
+                else
+                {
+                    propertyType = new SmdType { Name = item.PropertyType.Name, Type = CreateSmdType(item.PropertyType).Name };
+                }
+                propertyTypes.Add(item.Name, propertyType.Name);
             }
-            return new SmdType {Name = name, Type = types };
+            var complexSmdType = new ComplexSmdType { Name = type.Name, Type = propertyTypes };
+            AddComplexType(complexSmdType);
+            return complexSmdType;
         }
-    }
-
-    internal class SmdMethod
-    {
-        /// <summary>
-        /// Gets or sets the transport of the method.
-        /// </summary>
-        [JsonPropertyName("transport")] public string Transport { get; set; } = "POST";
-
-        /// <summary>
-        /// Gets or sets the envelope of the method.
-        /// </summary>
-        [JsonPropertyName("envelope")] public string Envelope { get; set; } = "JSON-RPC-2.0";
 
 
-        /// <summary>
-        /// Gets or sets the target of the method.
-        /// </summary>
-        [JsonPropertyName("target")] public string Target { get; set; }
-
-
-        /// <summary>
-        /// Gets or sets the parameters of the method.
-        /// </summary>
-        [JsonPropertyName("parameters")] public SmdType[] Parameters { get; set; }
-
-
-        /// <summary>
-        /// Gets or sets the returns of the method.
-        /// </summary>
-        [JsonPropertyName("returns")] public SmdType Returns { get; set; }
-    }
-
-    internal class SmdService
-    {
-        private static readonly JsonSerializerOptions Options = new()
+        private void AddSimpleType(SimpleSmdType type)
         {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, 
-            WriteIndented = true, 
-            IgnoreNullValues = true
-        };
+            if (_types.All(x => x.Name != type.Name))
+            {
+                _types.Insert(0,type);
+            }
+        }
 
-        private readonly Dictionary<string, SmdMethod> _methods = new();
 
-        /// <summary>
-        /// The services which contains all methods.
-        /// </summary>
-        [JsonPropertyName("services")]
-        public Dictionary<string, SmdMethod> Services => _methods;
+        private void AddComplexType(ComplexSmdType type)
+        {
+            if (_types.All(x => x.Name != type.Name))
+            {
+                _types.Add(type);
+            }
+        }
+
 
         /// <summary>
         /// Add one method into the SmdService.
@@ -178,7 +219,7 @@ namespace JsonRpcLite.Services
         public async Task<byte[]> ToUtf8JsonAsync()
         {
             await using var stream = new MemoryStream();
-            await JsonSerializer.SerializeAsync(stream, this, Options);
+            await JsonSerializer.SerializeAsync(stream, this, _options);
             return stream.GetBuffer();
         }
 
@@ -188,7 +229,7 @@ namespace JsonRpcLite.Services
         /// <returns></returns>
         public override string ToString()
         {
-            return JsonSerializer.Serialize(this, Options);
+            return JsonSerializer.Serialize(this, _options);
         }
     }
 }

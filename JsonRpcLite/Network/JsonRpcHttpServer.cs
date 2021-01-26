@@ -14,9 +14,9 @@ namespace JsonRpcLite.Network
         private HttpListener _listener;
         private bool _disposed;
 
-        public JsonRpcHttpServer(string serverName = "")
+        public JsonRpcHttpServer(string serverName = "", bool enableSmd = true)
         {
-            _router = new JsonRpcHttpRouter(serverName);
+            _router = new JsonRpcHttpRouter(serverName, enableSmd);
         }
 
         ~JsonRpcHttpServer()
