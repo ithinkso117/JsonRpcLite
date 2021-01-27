@@ -8,67 +8,303 @@ using System.Threading.Tasks;
 
 namespace JsonRpcLite.Services
 {
-    internal class SmdType
+
+    internal interface ISmdType
     {
         /// <summary>
         /// Get the name of the SmdType.
         /// </summary>
-        public string Name { get; set; }
+        string Name { get; set; }
 
         /// <summary>
         /// Get the type of the SmdType.
         /// </summary>
-        public object Type { get; set; }
-
+        object Type { get; set; }
     }
 
 
-    internal class SmdParameter
+    internal interface ISmdParameter
     {
         /// <summary>
         /// Gets or sets the name of the parameter.
         /// </summary>
-        public string Name { get; set; }
+        string Name { get; set; }
 
         /// <summary>
         /// Gets or sets the name of the type.
         /// </summary>
-        public string Type { get; set; } 
+        ISmdType Type { get; set; }
+
     }
 
-    internal class SmdMethod
+
+    internal interface ISmdMethod
     {
         /// <summary>
-        /// Gets or sets the transport of the method.
+        /// Gets or sets the method name.
         /// </summary>
-        public string Transport { get; set; } = "POST";
-
-        /// <summary>
-        /// Gets or sets the envelope of the method.
-        /// </summary>
-        public string Envelope { get; set; } = "JSON-RPC-2.0";
+        string Name { get; set; }
 
         /// <summary>
         /// Gets or sets the parameters of the method.
         /// </summary>
-        public SmdParameter[] Parameters { get; set; }
+        ISmdParameter[] Parameters { get; set; }
 
         /// <summary>
-        /// Gets or sets the returns of the method.
+        /// Gets or sets the return type of the method.
         /// </summary>
-        public string Returns { get; set; }
+        ISmdType Returns { get; set; }
+
     }
 
     internal class SmdService
     {
+        private class SmdBase
+        {
+            /// <summary>
+            /// Gets the target for the base smd object, for checking the relationship of the service.
+            /// </summary>
+            public string Target { get; }
+
+            protected SmdBase(string target)
+            {
+                Target = target;
+            }
+        }
+
+        private class TypeId
+        {
+            private readonly int _value;
+
+            public TypeId(int value)
+            {
+                _value = value;
+            }
+
+            /// <summary>
+            /// Get the id value as Int.
+            /// </summary>
+            /// <returns></returns>
+            public int AsInt()
+            {
+                return _value;
+            }
+
+            /// <summary>
+            /// Gets the id value as string.
+            /// </summary>
+            /// <returns></returns>
+            public string AsString()
+            {
+                return _value.ToString();
+            }
+        }
+
+        private class SmdType : SmdBase, ISmdType
+        {
+            /// <summary>
+            /// Gets or sets the Id of the type.
+            /// </summary>
+            public TypeId Id { get; set; }
+
+            /// <summary>
+            /// Get the name of the SmdType.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Get the type of the SmdType.
+            /// </summary>
+            public object Type { get; set; }
+
+            protected SmdType(string target) : base(target)
+            {
+            }
+
+            /// <summary>
+            /// Get the data which will be serialized.
+            /// </summary>
+            /// <returns>The data of the SmdType</returns>
+            public virtual Dictionary<string, object> ToTypeData()
+            {
+                throw new NotSupportedException();
+            }
+
+            public override string ToString()
+            {
+                return $"{Name} - {GetHashCode()}";
+            }
+        }
+
+
         private class SimpleSmdType : SmdType
         {
+            public SimpleSmdType(string target) : base(target)
+            {
+            }
 
+            public override Dictionary<string, object> ToTypeData()
+            {
+                string jsonType;
+                switch ((string)Type)
+                {
+                    case "sbyte":
+                    case "byte":
+                    case "int16":
+                    case "uint16":
+                    case "int32":
+                    case "uint32":
+                    case "int64":
+                    case "uint64":
+                    case "single":
+                    case "double":
+                    case "decimal":
+                        jsonType = "number";
+                        break;
+                    
+                    case "boolean":
+                        jsonType = "boolean";
+                        break;
+                    case "char":
+                    case "string":
+                    case "datetime":
+                        jsonType = "string";
+                        break;
+                    default:
+                        jsonType = "string";
+                        break;
+                }
+                var data = new Dictionary<string, object>
+                {
+                    {"name", Name},
+                    {"type", jsonType},
+                };
+                return data;
+            }
+        }
+
+        private class ArraySmdType : SmdType
+        {
+            public ArraySmdType(string target) : base(target)
+            {
+            }
+
+            public override Dictionary<string, object> ToTypeData()
+            {
+                var data = new Dictionary<string, object>
+                {
+                    {"name", Name},
+                    {"type", $"array#{((SmdType)Type).Id.AsInt()}"},
+                };
+                return data;
+            }
         }
 
         private class ComplexSmdType : SmdType
         {
+            public ComplexSmdType(string target) : base(target)
+            {
+            }
 
+            public override Dictionary<string, object> ToTypeData()
+            {
+                var properties = new Dictionary<string, object>();
+                if (Type is Dictionary<string, ISmdType> smdProperties)
+                {
+                    foreach (var name in smdProperties.Keys)
+                    {
+                        var smdType = (SmdType)smdProperties[name];
+                        properties.Add(name, smdType.Id.AsInt());
+                    }
+                }
+                var data = new Dictionary<string, object>
+                {
+                    {"name", Name},
+                    {"type", properties},
+                };
+                return data;
+            }
+        }
+
+
+        private class SmdParameter : SmdBase, ISmdParameter
+        {
+            /// <summary>
+            /// Gets or sets the name of the parameter.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the name of the type.
+            /// </summary>
+            public ISmdType Type { get; set; }
+
+
+            public SmdParameter(string target) : base(target)
+            {
+            }
+
+            /// <summary>
+            /// Get the data which will be serialized.
+            /// </summary>
+            /// <returns>The data of the SmdParameter</returns>
+            public Dictionary<string, object> ToParameterData()
+            {
+                var data = new Dictionary<string, object>
+                {
+                    {"name", Name},
+                    {"type", ((SmdType)Type).Id.AsInt()},
+                };
+                return data;
+            }
+        }
+
+
+        private class SmdMethod : SmdBase, ISmdMethod
+        {
+
+            /// <summary>
+            /// Gets or sets the method name.
+            /// </summary>
+            public string Name { get; set; }
+
+            /// <summary>
+            /// Gets or sets the parameters of the method.
+            /// </summary>
+            public ISmdParameter[] Parameters { get; set; }
+
+            /// <summary>
+            /// Gets or sets the return type of the method.
+            /// </summary>
+            public ISmdType Returns { get; set; }
+
+            public SmdMethod(string target) : base(target)
+            {
+            }
+
+            /// <summary>
+            /// Get the data which will be serialized.
+            /// </summary>
+            /// <returns>The data of the SmdMethod</returns>
+            public Dictionary<string, object> ToMethodData()
+            {
+                var parametersData = new List<Dictionary<string, object>>();
+                foreach (var parameter in Parameters)
+                {
+                    parametersData.Add(((SmdParameter)parameter).ToParameterData());
+                }
+                var data = new Dictionary<string, object>
+                {
+                    {"transport", "POST"},
+                    {"envelope", "JSON-RPC-2.0"},
+                    {"parameters", parametersData},
+                };
+                if (Returns != null)
+                {
+                    data.Add("returns", ((SmdType)Returns).Id.AsInt());
+                }
+                return data;
+            }
         }
 
 
@@ -77,38 +313,22 @@ namespace JsonRpcLite.Services
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true,
             IgnoreNullValues = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
 
         private readonly List<SmdType> _types = new();
-        private readonly Dictionary<string, SmdMethod> _methods = new();
+        private readonly List<SmdMethod> _methods = new();
 
-
-        /// <summary>
-        /// Gets or sets the transport of the method.
-        /// </summary>
-        public string Transport { get; set; } = "GET";
-
-        /// <summary>
-        /// Gets or sets the envelope of the method.
-        /// </summary>
-        public string Envelope { get; set; } = "URL";
 
         /// <summary>
         /// Gets or sets the target of the method.
         /// </summary>
-        public string Target { get; set; }
+        public string Target { get;}
 
 
-        /// <summary>
-        /// Gets the types used in this service.
-        /// </summary>
-        public Dictionary<string, SmdType> Types => _types.ToDictionary(type=> type.Name, type => type);
-
-        /// <summary>
-        /// The services which contains all methods.
-        /// </summary>
-        public Dictionary<string, SmdMethod> Services => _methods;
+        public SmdService(string target)
+        {
+            Target = target;
+        }
 
 
         /// <summary>
@@ -135,13 +355,8 @@ namespace JsonRpcLite.Services
                     || name == "system.double"
                     || name == "system.boolean"
                     || name == "system.decimal"
-                    || name == "system.float"
-                    || name == "system.numeric"
-                    || name == "system.money"
                     || name == "system.string"
-                    || name == "system.object"
-                    || name == "system.type"
-                    // || name == "system.datetime"
+                    || name == "system.datetime"
                 )
                 {
                     return true;
@@ -151,34 +366,50 @@ namespace JsonRpcLite.Services
             return false;
         }
 
-        public SmdType CreateSmdType(Type type)
+
+        /// <summary>
+        /// Create a ISmdType for this service.
+        /// </summary>
+        /// <param name="type">The type to create.</param>
+        /// <returns>The created ISmdType.</returns>
+        public ISmdType CreateSmdType(Type type)
         {
-            //TODO support Generic types, otherwise need to check there is no Generic types in services.
+            var smdType = _types.FirstOrDefault(x => x.Name == type.Name);
+            if (smdType != null)
+            {
+                return smdType;
+            }
+
             if (IsSimpleType(type))
             {
-                var simpleSmdType = new SimpleSmdType{Name = type.Name, Type = type.Name.ToLower()};
+                var simpleSmdType = new SimpleSmdType(Target)
+                {
+                    Name = type.Name,
+                    Type = type.Name.ToLower()
+                };
                 AddSimpleType(simpleSmdType);
                 return simpleSmdType;
             }
 
-            var properties = type.GetProperties().Where(x=>x.GetAccessors().Any(y=>y.IsPublic)).ToArray();
-            var propertyTypes = new Dictionary<string, string>();
+            if (type.IsArray)
+            {
+                var arraySmdType = new ArraySmdType(Target)
+                {
+                    Name = type.Name,
+                    Type = CreateSmdType(type.GetElementType())
+                };
+                AddArrayType(arraySmdType);
+                return arraySmdType;
+            }
+
+            var properties = type.GetProperties().Where(x => x.GetAccessors().Any(y => y.IsPublic)).ToArray();
+            var propertyTypes = new Dictionary<string, ISmdType>();
             foreach (var item in properties)
             {
-                SmdType propertyType;
-                if (IsSimpleType(item.PropertyType))
-                {
-                    var simpleSmdType = new SimpleSmdType{Name = item.PropertyType.Name, Type = item.PropertyType.Name.ToLower()};
-                    AddSimpleType(simpleSmdType);
-                    propertyType = simpleSmdType;
-                }
-                else
-                {
-                    propertyType = new SmdType { Name = item.PropertyType.Name, Type = CreateSmdType(item.PropertyType).Name };
-                }
-                propertyTypes.Add(item.Name, propertyType.Name);
+                propertyTypes.Add(item.Name, CreateSmdType(item.PropertyType));
             }
-            var complexSmdType = new ComplexSmdType { Name = type.Name, Type = propertyTypes };
+
+            var complexSmdType = new ComplexSmdType(Target) { Name = type.Name, Type = propertyTypes };
             AddComplexType(complexSmdType);
             return complexSmdType;
         }
@@ -188,7 +419,17 @@ namespace JsonRpcLite.Services
         {
             if (_types.All(x => x.Name != type.Name))
             {
-                _types.Insert(0,type);
+                var lastSimpleTypeIndex = _types.FindLastIndex(x => x is SimpleSmdType);
+                var typeIndex = lastSimpleTypeIndex + 1;
+                _types.Insert(typeIndex, type);
+            }
+        }
+
+        private void AddArrayType(ArraySmdType type)
+        {
+            if (_types.All(x => x.Name != type.Name))
+            {
+                _types.Add(type);
             }
         }
 
@@ -201,15 +442,116 @@ namespace JsonRpcLite.Services
             }
         }
 
+        /// <summary>
+        /// Create a ISmdParameter for this service.
+        /// </summary>
+        /// <param name="name">The name of the parameter.</param>
+        /// <param name="type">The type of the parameter.</param>
+        /// <returns>The created ISmdParameter</returns>
+        public ISmdParameter CreateSmdParameter(string name, ISmdType type)
+        {
+            if (!(type is SmdType smdType))
+            {
+                throw new InvalidOperationException($"Invalided argument \"{type}\".");
+            }
+
+            if (smdType.Target != Target)
+            {
+                throw new InvalidOperationException($"Argument \"{type}\" is not created by this service.");
+            }
+            return new SmdParameter(Target) { Name = name, Type = type };
+        }
+
+        /// <summary>
+        /// Create a ISmdMethod for this service.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="parameters"></param>
+        /// <param name="returns"></param>
+        /// <returns></returns>
+        public ISmdMethod CreateSmdMethod(string name, ISmdParameter[] parameters, ISmdType returns)
+        {
+            foreach (var parameter in parameters)
+            {
+                if (!(parameter is SmdParameter smdParameter))
+                {
+                    throw new InvalidOperationException($"Invalided argument \"{parameters}\".");
+                }
+                if (smdParameter.Target != Target)
+                {
+                    throw new InvalidOperationException($"Argument \"{parameters}\" is not created by this service.");
+                }
+            }
+
+            if (returns != null)
+            {
+                if (!(returns is SmdType smdType))
+                {
+                    throw new InvalidOperationException($"Invalided argument \"{returns}\".");
+                }
+                if (smdType.Target != Target)
+                {
+                    throw new InvalidOperationException($"Argument \"{returns}\" is not created by this service.");
+                }
+            }
+
+            return new SmdMethod(Target) { Name = name, Parameters = parameters, Returns = returns };
+        }
+
 
         /// <summary>
         /// Add one method into the SmdService.
         /// </summary>
-        /// <param name="name">The name of the method.</param>
         /// <param name="method">The method to add.</param>
-        public void AddMethod(string name, SmdMethod method)
+        public void AddMethod(ISmdMethod method)
         {
-            _methods.Add(name, method);
+            if (!(method is SmdMethod smdMethod))
+            {
+                throw new InvalidOperationException($"Invalided argument \"{method}\".");
+            }
+            if (smdMethod.Target != Target)
+            {
+                throw new InvalidOperationException($"Argument \"{smdMethod}\" is not created by this service.");
+            }
+            foreach (var existMethod in _methods)
+            {
+                if (existMethod.Name == smdMethod.Name)
+                {
+                    throw new InvalidOperationException("Method name already exists.");
+                }
+            }
+
+            _methods.Add(smdMethod);
+        }
+
+
+        public Dictionary<string, object> ToServiceData()
+        {
+            var types = new Dictionary<string, Dictionary<string, object>>();
+            for (var i = 0; i < _types.Count; i++)
+            {
+                var type = _types[i];
+                type.Id = new TypeId(i);
+            }
+
+            foreach (var type in _types)
+            {
+                types.Add(type.Id.AsString(), type.ToTypeData());
+            }
+            var services = new Dictionary<string, Dictionary<string, object>>();
+            foreach (var method in _methods)
+            {
+                services.Add(method.Name, method.ToMethodData());
+            }
+            var data = new Dictionary<string, object>
+            {
+                {"transport", "GET"},
+                {"envelope", "URL"},
+                {"target", Target},
+                {"types", types},
+                {"services", services},
+            };
+            return data;
         }
 
         /// <summary>
@@ -219,17 +561,9 @@ namespace JsonRpcLite.Services
         public async Task<byte[]> ToUtf8JsonAsync()
         {
             await using var stream = new MemoryStream();
-            await JsonSerializer.SerializeAsync(stream, this, _options);
+            await JsonSerializer.SerializeAsync(stream, ToServiceData(), _options);
             return stream.ToArray();
         }
 
-        /// <summary>
-        /// Gets the json string of this service.
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return JsonSerializer.Serialize(this, _options);
-        }
     }
 }

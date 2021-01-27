@@ -13,7 +13,7 @@ namespace JsonRpcLite.Services
         /// <summary>
         /// Gets the service name.
         /// </summary>
-        internal string Name { get; private set; }
+        internal string Name { get;}
 
         /// <summary>
         /// Gets the SmdData of this service.
@@ -58,30 +58,26 @@ namespace JsonRpcLite.Services
         /// </summary>
         private void GenerateSmd()
         {
-            var smdService = new SmdService {Target = Name};
+            var smdService = new SmdService(Name);
             foreach (var rpcCall in _rpcCalls.Values)
             {
-                var method = new SmdMethod(); ;
                 var methodName = rpcCall.Name;
+                var parameters = new ISmdParameter[rpcCall.Parameters.Count];
+                ISmdType returns = null;
                 if (rpcCall.ReturnType != null)
                 {
-                    var type = smdService.CreateSmdType(rpcCall.ReturnType);
-                    method.Returns = type.Name;
+                    returns = smdService.CreateSmdType(rpcCall.ReturnType);
                 }
-                var parameters = new SmdParameter[rpcCall.Parameters.Count];
                 var index = 0;
                 foreach (var rpcCallParameter in rpcCall.Parameters)
                 {
-                    var type = smdService.CreateSmdType(rpcCallParameter.ParameterType);
-                    var parameter = new SmdParameter
-                    {
-                        Name = rpcCallParameter.Name, Type = type.Name
-                    };
+                    var parameter = smdService.CreateSmdParameter(rpcCallParameter.Name, smdService.CreateSmdType(rpcCallParameter.ParameterType));
                     parameters[index] = parameter;
                     index++;
                 }
-                method.Parameters = parameters;
-                smdService.AddMethod(methodName, method);
+
+                var smdMethod = smdService.CreateSmdMethod(methodName, parameters, returns);
+                smdService.AddMethod(smdMethod);
             }
 
             SmdData = smdService.ToUtf8JsonAsync().Result;
@@ -120,6 +116,8 @@ namespace JsonRpcLite.Services
             }
         }
 
+        
+
         private JsonRpcCall CreateJsonRpcCall(string methodName, MethodInfo method)
         {
             var voidMethod = method.ReturnType == typeof(void);
@@ -130,7 +128,18 @@ namespace JsonRpcLite.Services
             var paramInfos = new List<JsonRpcCallParameter>();
             foreach (var parameterInfo in parameters)
             {
+                var parameterTypeChecker = new JsonRpcTypeChecker();
+                if (!parameterTypeChecker.IsTypeAllowed(parameterInfo.ParameterType))
+                {
+                    throw new InvalidOperationException($"Parameter [{parameterInfo.Name}] - [{parameterInfo.ParameterType}] for method [{method.Name}] is not supported. Reason: {parameterTypeChecker.Error}");
+                }
                 paramInfos.Add(new JsonRpcCallParameter(parameterInfo.Name, parameterInfo.ParameterType));
+            }
+
+            var returnTypeChecker = new JsonRpcTypeChecker();
+            if (!returnTypeChecker.IsTypeAllowed(method.ReturnType))
+            {
+                throw new InvalidOperationException($"Return type {method.ReturnType} is not supported. Reason: {returnTypeChecker.Error}");
             }
 
             var dynamicMethod = voidMethod ? 

@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonRpcLite", "JsonRpcLite\JsonRpcLite.csproj", "{8432DB67-FCA0-42FA-B512-9312F791B769}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServer", "TestServer\TestServer.csproj", "{0DB8A221-AF80-4980-B466-447A38C33758}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestServer", "TestServer\TestServer.csproj", "{0DB8A221-AF80-4980-B466-447A38C33758}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "jrl", "jrl\jrl.csproj", "{F97D3D4F-2464-432F-8C92-0A50685DF9DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{0DB8A221-AF80-4980-B466-447A38C33758}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DB8A221-AF80-4980-B466-447A38C33758}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DB8A221-AF80-4980-B466-447A38C33758}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,24 +1,46 @@
-﻿using JsonRpcLite.Services;
+﻿using System;
+using JsonRpcLite.Services;
 
 namespace TestServer
 {
-    public class SubCls
+    public class TestClass1
     {
-        public string PP { get; set; }
+        public int Id { get; set; }
 
-        public int QQ { get; set; }
+        public string Name { get; set; }
+
+
+    }
+
+    public class TestClass2
+    {
+        public byte[] Data { get; set; }
+
+        public DateTime Time { get; set; }
+
+        public float Id { get; set; }
+
+        public TestClass1 Child { get; set; }
+
     }
 
     public class ComplexObject
     {
-        public string Name { get; set; }
+        public TestClass1 Test1 { get; set; }
 
-        public SubCls Sub { get; set; }
+        public TestClass2 Test2 { get; set; }
     }
+
 
     [RpcService("test")]
     public class CalculatorService : JsonRpcService
     {
+        [RpcMethod]
+        public ComplexObject[] testIsAllowed(ComplexObject[] cb)
+        {
+            return cb;
+        }
+
         [RpcMethod]
         public ComplexObject testComplex(ComplexObject cb)
         {
@@ -141,9 +163,9 @@ namespace TestServer
         }
 
         [RpcMethod]
-        public string StringMe_3(string x)
+        public void StringMe_3(string x)
         {
-            return x;
+            
         }
     }
 }
