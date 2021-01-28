@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using JsonRpcLite.InProcess;
 using JsonRpcLite.Log;
 using JsonRpcLite.Network;
+using JsonRpcLite.Rpc;
 
 namespace TestServer
 {
@@ -17,12 +18,11 @@ namespace TestServer
             "{\"jsonrpc\": \"2.0\", \"method\":\"Test2\",\"params\":[3.456],\"id\":4}",
             "{\"jsonrpc\": \"2.0\", \"method\":\"StringMe\",\"params\":[\"Foo\"],\"id\":5}"
         };
-        private static JsonRpcInProcessServer _localServer;
-
-        private static JsonRpcHttpServer _httpServer;
+        private static readonly JsonRpcServer Server = new JsonRpcServer();
 
         static void Main(string[] args)
         {
+            Server.RegisterService<ITest2>(new InterfaceTest());
             if(args.Contains("-debug"))
             {
                 Logger.DebugMode = true;
@@ -31,18 +31,20 @@ namespace TestServer
 
             if (args.Contains("-benchmark"))
             {
-                
-                for (var i = 0; i < 20; i++)
+                var engine = new JsonRpcInProcessServerEngine();
+                Server.UseEngine(engine);
+                Server.Start();
+                for (var i = 0; i < 100; i++)
                 {
-                    _localServer = new JsonRpcInProcessServer();
                     Benchmark(TestData);
                     Console.WriteLine();
                 }
             }
             else
             {
-                _httpServer = new JsonRpcHttpServer();
-                _httpServer.Start(8090);
+                var engine = new JsonRpcHttpServerEngine("http://127.0.0.1:8090/");
+                Server.UseEngine(engine);
+                Server.Start();
                 Console.WriteLine("JsonRpc HttpServer Started.");
             }
             Console.ReadLine();
@@ -53,7 +55,7 @@ namespace TestServer
         {
             return Task.Factory.StartNew(() =>
             {
-                var task = _localServer.BenchmarkProcessAsync("test", "v1", requestStr);
+                var task = Server.BenchmarkAsync("test", requestStr);
                 task.Wait();
                 task.Dispose();
             });

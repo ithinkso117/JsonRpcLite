@@ -33,7 +33,7 @@ namespace TestServer
 
 
     [RpcService("test")]
-    public class CalculatorService : JsonRpcService
+    public class TestService
     {
         [RpcMethod]
         public ComplexObject[] testIsAllowed(ComplexObject[] cb)
@@ -165,7 +165,7 @@ namespace TestServer
         [RpcMethod]
         public void StringMe_3(string x)
         {
-            
+            Console.WriteLine("StringMe_3 called.");
         }
     }
 }

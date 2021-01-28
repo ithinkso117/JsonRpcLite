@@ -64,7 +64,14 @@ namespace JsonRpcLite.Utilities
                 else
                 {
                     _data.Remove("error");
-                    _data["result"] = value;
+                    if (value == null)
+                    {
+                        _data.Remove("result");
+                    }
+                    else
+                    {
+                        _data["result"] = value;
+                    }
                 }
             }
         }

@@ -7,15 +7,14 @@
         /// </summary>
         public string Name { get; }
 
-        /// <summary>
-        /// Gets whether is a smd request
-        /// </summary>
-        public bool IsSmdRequest { get; }
-
-        public JsonRpcServiceInfo(string name, bool isSmdRequest)
+        public JsonRpcServiceInfo(string name)
         {
             Name = name;
-            IsSmdRequest = isSmdRequest;
+        }
+
+        public override string ToString()
+        {
+            return Name;
         }
     }
 }
