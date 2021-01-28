@@ -7,7 +7,7 @@ This is a simple JsonRpc server implementation written in C#, it's simple, but f
 ## Features
 - [x] High performance, faster than JSON-RPC.NET.
 - [x] Lightweight design, only one dll file.
-- [x] Build-in http server, support http, websocket and in-process.
+- [x] Build-in http server, support http and in-process.
 - [x] Attributes support, support customize service name and method name.
 - [x] SMD support.
 - [ ] Code generator for generate client code(C#, dart, javascript...).
