@@ -44,4 +44,45 @@ processed 252,000 rpc in         640ms for       393,750.00 rpc/sec
 Finished benchmark...
 ```
 
+#### Usage
+## For server
+```csharp
+    public interface ITestService
+    {
+        public string Hello(string name);
+
+        public int Add(int a, int b);
+    }
+    
+    public class TestService:ITestService
+    {
+		public string Hello(string name)
+		{ 
+		...
+		}
+
+        public int Add(int a, int b)
+        {
+          ...
+        }
+    }
+
+   //In server
+   var server = new JsonRpcServer();
+   server.RegisterService<ITestService>(new TestService());
+   var serverEngine = new JsonRpcHttpServerEngine("http://127.0.0.1:8090/");
+   server.UseEngine(serverEngine);
+   server.Start();
+```
+
+## For clinet
+```csharp
+  //In client
+  var client = new JsonRpcClient();
+  var clientEngine = new JsonRpcHttpClientEngine("http://127.0.0.1:8090/");
+  client.UseEngine(clientEngine);
+  var proxy = client.CreateProxy<ITestService>("TestService");
+  Console.WriteLine(proxy.Hello("World"));
+```
+
 
