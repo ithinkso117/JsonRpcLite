@@ -29,7 +29,7 @@ namespace JsonRpcLite.Utilities
         /// <returns></returns>
         public static Utf8StringData Get(string str)
         {
-            return Pool.Get(str);
+            return Pool.Rent(str);
         }
 
 

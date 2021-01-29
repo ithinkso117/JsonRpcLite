@@ -123,7 +123,24 @@ namespace JsonRpcLite.Services
                 {
                     throw new MethodNotFoundException($"Method: {request.Method} not found.");
                 }
-                var arguments = await JsonRpcCodec.DecodeArgumentsAsync(request.Params, rpcCall.Parameters).ConfigureAwait(false);
+
+                object[] arguments;
+                if (request.Params.Type == RequestParameterType.RawString)
+                {
+                    var paramString = (string) request.Params.Value;
+                    arguments = await JsonRpcCodec.DecodeArgumentsAsync(paramString, rpcCall.Parameters).ConfigureAwait(false);
+                }
+                else
+                {
+                    if (request.Params.Value is Array)
+                    {
+                        arguments = (object[]) request.Params.Value;
+                    }
+                    else
+                    {
+                        arguments = new[] {request.Params.Value};
+                    }
+                }
 
                 //From here we got the response id.
                 response = new JsonRpcResponse(request.Id);

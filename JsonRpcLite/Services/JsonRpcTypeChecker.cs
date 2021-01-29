@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace JsonRpcLite.Services
 {
     internal class JsonRpcTypeChecker
     {
-        private static readonly Type[] SpecialTypes =
-        {
-            typeof(DateTime),
-        };
-
         /// <summary>
         /// Gets or sets the max depth to check the child types.
         /// </summary>
@@ -26,19 +22,39 @@ namespace JsonRpcLite.Services
         /// </summary>
         /// <param name="type">The type to check.</param>
         /// <returns>True if allow otherwise not.</returns>
-        public bool IsTypeAllowed(Type type)
+        public bool IsReturnTypeAllowed(Type type)
         {
+            //Special case.
+            if (typeof(DateTime) == type)
+            {
+                return true;
+            }
+            if (typeof(Task).IsAssignableFrom(type))
+            {
+                return true;
+            }
+            var level = 0;
+            return InternalIsTypeAllowed(type, ref level);
+        }
+
+        /// <summary>
+        /// Check whether the type is allowed.
+        /// </summary>
+        /// <param name="type">The type to check.</param>
+        /// <returns>True if allow otherwise not.</returns>
+        public bool IsParameterTypeAllowed(Type type)
+        {
+            //Special case.
+            if (typeof(DateTime) == type)
+            {
+                return true;
+            }
             var level = 0;
             return InternalIsTypeAllowed(type, ref level);
         }
 
         private bool InternalIsTypeAllowed(Type type, ref int level)
         {
-            //Special case.
-            if (SpecialTypes.Contains(type))
-            {
-                return true;
-            }
             level++;
             if (level > MaxDepth)
             {
@@ -48,6 +64,12 @@ namespace JsonRpcLite.Services
             if (type == typeof(object))
             {
                 Error = "NotSupport_BaseObject";
+                return false;
+            }
+
+            if (type.IsByRef)
+            {
+                Error = "NotSupport_ByRef";
                 return false;
             }
 

@@ -18,12 +18,15 @@ namespace TestServer
             "{\"jsonrpc\": \"2.0\", \"method\":\"Test2\",\"params\":[3.456],\"id\":4}",
             "{\"jsonrpc\": \"2.0\", \"method\":\"StringMe\",\"params\":[\"Foo\"],\"id\":5}"
         };
-        private static readonly JsonRpcServer Server = new JsonRpcServer();
 
         static void Main(string[] args)
         {
-            Server.RegisterService<ITest2>(new InterfaceTest());
-            if(args.Contains("-debug"))
+            var server = new JsonRpcServer();
+            server.RegisterService<ITest2>(new InterfaceTest());
+
+            var client = new JsonRpcClient();
+
+            if (args.Contains("-debug"))
             {
                 Logger.DebugMode = true;
                 Logger.UseDefaultWriter();
@@ -31,37 +34,48 @@ namespace TestServer
 
             if (args.Contains("-benchmark"))
             {
-                var engine = new JsonRpcInProcessServerEngine();
-                Server.UseEngine(engine);
-                Server.Start();
+                var engine = new JsonRpcInProcessEngine();
+                server.UseEngine(engine);
+                client.UseEngine(engine);
+                server.Start();
                 for (var i = 0; i < 100; i++)
                 {
-                    Benchmark(TestData);
+                    Benchmark(client,TestData);
                     Console.WriteLine();
                 }
             }
             else
             {
-                var engine = new JsonRpcHttpServerEngine("http://127.0.0.1:8090/");
-                Server.UseEngine(engine);
-                Server.Start();
+                var serverEngine = new JsonRpcHttpServerEngine("http://127.0.0.1:8090/");
+                server.UseEngine(serverEngine);
+                server.Start();
                 Console.WriteLine("JsonRpc HttpServer Started.");
+
+                var clientEngine = new JsonRpcHttpClientEngine("http://127.0.0.1:8090/");
+                client.UseEngine(clientEngine);
+                var proxy = client.CreateProxy<ITest2>("Test2");
+                TestAddAsync(proxy);
             }
             Console.ReadLine();
         }
 
+        private static async void TestAddAsync(ITest2 proxy)
+        {
+            var result = await proxy.AddInt2Async(8, 9);
+        }
 
-        public static Task Process(string requestStr)
+
+        public static Task Process(JsonRpcClient client,string requestStr)
         {
             return Task.Factory.StartNew(() =>
             {
-                var task = Server.BenchmarkAsync("test", requestStr);
+                var task = client.BenchmarkAsync("test", requestStr);
                 task.Wait();
                 task.Dispose();
             });
         }
 
-        private static void Benchmark(string[] testData)
+        private static void Benchmark(JsonRpcClient client, string[] testData)
         {
             Console.WriteLine("Starting benchmark");
             var count = 50;
@@ -74,11 +88,11 @@ namespace TestServer
 
                 for (int i = 0; i < count; i += 5)
                 {
-                    tasks[i] = Process(testData[0]);
-                    tasks[i + 1] = Process(testData[1]);
-                    tasks[i + 2] = Process(testData[2]);
-                    tasks[i + 3] = Process(testData[3]);
-                    tasks[i + 4] = Process(testData[4]);
+                    tasks[i] = Process(client,testData[0]);
+                    tasks[i + 1] = Process(client,testData[1]);
+                    tasks[i + 2] = Process(client,testData[2]);
+                    tasks[i + 3] = Process(client,testData[3]);
+                    tasks[i + 4] = Process(client,testData[4]);
                 }
                 Task.WaitAll(tasks);
                 foreach (var task in tasks)

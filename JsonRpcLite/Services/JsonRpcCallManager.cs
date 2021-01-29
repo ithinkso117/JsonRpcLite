@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 
 namespace JsonRpcLite.Services
 {
@@ -88,7 +89,7 @@ namespace JsonRpcLite.Services
                     var methodName = rpcCall.Name;
                     var parameters = new ISmdParameter[rpcCall.Parameters.Count];
                     ISmdType returns = null;
-                    if (rpcCall.ReturnType != null)
+                    if (rpcCall.ReturnType != null && rpcCall.ReturnType != typeof(void) && rpcCall.ReturnType != typeof(Task))
                     {
                         returns = smdService.CreateSmdType(rpcCall.ReturnType);
                     }
@@ -123,7 +124,7 @@ namespace JsonRpcLite.Services
             foreach (var parameterInfo in parameters)
             {
                 var parameterTypeChecker = new JsonRpcTypeChecker();
-                if (!parameterTypeChecker.IsTypeAllowed(parameterInfo.ParameterType))
+                if (!parameterTypeChecker.IsParameterTypeAllowed(parameterInfo.ParameterType))
                 {
                     throw new InvalidOperationException($"Parameter [{parameterInfo.Name}] - [{parameterInfo.ParameterType}] for method [{method.Name}] is not supported. Reason: {parameterTypeChecker.Error}");
                 }
@@ -131,7 +132,7 @@ namespace JsonRpcLite.Services
             }
 
             var returnTypeChecker = new JsonRpcTypeChecker();
-            if (!returnTypeChecker.IsTypeAllowed(method.ReturnType))
+            if (!returnTypeChecker.IsReturnTypeAllowed(method.ReturnType))
             {
                 throw new InvalidOperationException($"Return type {method.ReturnType} is not supported. Reason: {returnTypeChecker.Error}");
             }
@@ -207,6 +208,11 @@ namespace JsonRpcLite.Services
                 }
             }
 
+            if (CallServices.ContainsKey(serviceName))
+            {
+                throw new InvalidOperationException($"Service {serviceName} already exists.");
+            }
+
             //For object service, only method with RpcMethodAttribute can be registered.
             var callService = new JsonRpcCallService(serviceName);
             //Load all methods.
@@ -215,6 +221,11 @@ namespace JsonRpcLite.Services
             var availableMethods = methods.Where(x => x.IsVirtual == false && x.IsStatic == false).ToArray();
             foreach (var method in availableMethods)
             {
+                if (method.IsGenericMethod)
+                {
+                    //WE DO NOT SUPPORT GENERICMETHOD
+                    continue;
+                }
                 //Get if the method support JsonRpcMethodAttribute
                 var methodAttributes = method.GetCustomAttributes(typeof(RpcMethodAttribute), true);
                 if (methodAttributes.Length == 0)
@@ -284,11 +295,21 @@ namespace JsonRpcLite.Services
                 }
             }
 
+            if (CallServices.ContainsKey(serviceName))
+            {
+                throw new InvalidOperationException($"Service {serviceName} already exists.");
+            }
+
             var callService = new JsonRpcCallService(serviceName);
             //Load all methods.
             var interfaceMethods = interfaceType.GetMethods();
             foreach (var interfaceMethod in interfaceMethods)
             {
+                if (interfaceMethod.IsGenericMethod)
+                {
+                    //WE DO NOT SUPPORT GENERICMETHOD
+                    throw new InvalidOperationException("GenericMethod is not supported.");
+                }
                 var method = serviceType.GetMethod(interfaceMethod.Name);
                 //Get if the method support JsonRpcMethodAttribute
                 var methodAttributes = interfaceMethod.GetCustomAttributes(typeof(RpcMethodAttribute), true);

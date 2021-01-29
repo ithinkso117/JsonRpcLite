@@ -12,7 +12,7 @@ namespace JsonRpcLite.Utilities
         /// Rent an object from pool.
         /// </summary>
         /// <returns>The item from the pool.</returns>
-        public T Get() => _objects.TryTake(out T item) ? item : _objectGenerator();
+        public T Rent() => _objects.TryTake(out T item) ? item : _objectGenerator();
 
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace JsonRpcLite.Utilities
         /// Rent an object from pool.
         /// </summary>
         /// <returns>The item from the pool.</returns>
-        public T Get(TParam parameter)
+        public T Rent(TParam parameter)
         {
             if (_objects.TryTake(out var item))
             {

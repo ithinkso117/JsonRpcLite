@@ -84,7 +84,7 @@ namespace JsonRpcLite.Services
             /// <summary>
             /// Get the id value as Int.
             /// </summary>
-            /// <returns></returns>
+            /// <returns>The int value of the id</returns>
             public int AsInt()
             {
                 return _value;
@@ -93,7 +93,7 @@ namespace JsonRpcLite.Services
             /// <summary>
             /// Gets the id value as string.
             /// </summary>
-            /// <returns></returns>
+            /// <returns>The string value of the id.</returns>
             public string AsString()
             {
                 return _value.ToString();
@@ -378,6 +378,12 @@ namespace JsonRpcLite.Services
             if (smdType != null)
             {
                 return smdType;
+            }
+
+            //For supporting Task<T>
+            if (typeof(Task).IsAssignableFrom(type) && type.IsGenericType)
+            {
+                return CreateSmdType(type.GetGenericArguments().Single());
             }
 
             if (IsSimpleType(type))

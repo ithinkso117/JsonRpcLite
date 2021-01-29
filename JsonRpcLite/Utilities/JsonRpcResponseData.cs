@@ -4,7 +4,7 @@ using JsonRpcLite.Services;
 
 namespace JsonRpcLite.Utilities
 {
-    internal class JsonRpcResultData
+    internal class JsonRpcResponseData
     {
         private readonly Dictionary<string, object> _data = new(){ { "jsonrpc", "2.0" } };
 
@@ -36,6 +36,9 @@ namespace JsonRpcLite.Utilities
         }
 
 
+        /// <summary>
+        /// Gets or sets the result data.
+        /// </summary>
         public object Data
         {
             get
@@ -64,14 +67,8 @@ namespace JsonRpcLite.Utilities
                 else
                 {
                     _data.Remove("error");
-                    if (value == null)
-                    {
-                        _data.Remove("result");
-                    }
-                    else
-                    {
-                        _data["result"] = value;
-                    }
+                    //When success, the result field must be existed no matter the value is null or not.
+                    _data["result"] = value;
                 }
             }
         }

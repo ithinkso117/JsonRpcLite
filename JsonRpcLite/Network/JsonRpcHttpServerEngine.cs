@@ -13,13 +13,22 @@ using JsonRpcLite.Utilities;
 
 namespace JsonRpcLite.Network
 {
-    public class JsonRpcHttpServerEngine : JsonRpcServerEngine
+    public class JsonRpcHttpServerEngine : IJsonRpcServerEngine
     {
         private readonly ManualResetEvent _stopEvent = new(true);
         private readonly string _prefix;
         private readonly bool _enableSmd;
 
         private HttpListener _listener;
+
+
+        private IJsonRpcRouter _router;
+
+        /// <summary>
+        /// Gets the engine name.
+        /// </summary>
+        public string Name { get; protected set; }
+
 
         public JsonRpcHttpServerEngine(string prefix, bool enableSmd = true)
         {
@@ -32,9 +41,9 @@ namespace JsonRpcLite.Network
         /// Start the engine and use given router to handle request.
         /// </summary>
         /// <param name="router">The router which will handle the request.</param>
-        public override void Start(IJsonRpcRouter router)
+        public void Start(IJsonRpcRouter router)
         {
-            base.Start(router);
+            _router = router ?? throw new ArgumentNullException(nameof(router));
             _stopEvent.Reset();
             _listener = new HttpListener();
             _listener.Prefixes.Add(_prefix);
@@ -61,9 +70,9 @@ namespace JsonRpcLite.Network
         /// <summary>
         /// Stop the engine.
         /// </summary>
-        public override void Stop()
+        public void Stop()
         {
-            base.Stop();
+            _router = null;
             _stopEvent.Set();
             _listener.Close();
             Logger.WriteInfo("JsonRpc http server engine stopped.");
@@ -127,7 +136,7 @@ namespace JsonRpcLite.Network
                         smdRequest = true;
                     }
 
-                    if (!Router.ServiceExists(serviceName))
+                    if (!_router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {context.Request.Url} not found.");
                         throw new HttpException((int)HttpStatusCode.ServiceUnavailable,$"Service [{serviceName}] does not exist.");
@@ -137,7 +146,7 @@ namespace JsonRpcLite.Network
                     {
                         try
                         {
-                            var smdData = await Router.GetServiceSmdData(serviceName);
+                            var smdData = await _router.GetServiceSmdData(serviceName);
                             await WriteSmdDataAsync(context, smdData).ConfigureAwait(false);
                         }
                         catch (Exception ex)
@@ -153,7 +162,7 @@ namespace JsonRpcLite.Network
                 else if (httpMethod == "post")
                 {
                     var serviceName = serviceInfo.Name;
-                    if (!Router.ServiceExists(serviceName))
+                    if (!_router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {context.Request.Url} not found.");
                         throw new ServerErrorException("Service does not exist.", $"Service [{serviceName}] does not exist.");
@@ -232,7 +241,7 @@ namespace JsonRpcLite.Network
                 ArrayPool<byte>.Shared.Return(requestData);
             }
 
-            var responses = await Router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
+            var responses = await _router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
             await WriteRpcResponsesAsync(context, responses).ConfigureAwait(false);
         }
 
