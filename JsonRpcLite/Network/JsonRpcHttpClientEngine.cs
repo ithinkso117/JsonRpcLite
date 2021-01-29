@@ -38,7 +38,6 @@ namespace JsonRpcLite.Network
             _httpClient = new HttpClient
             {
                 BaseAddress = new Uri(serverUrl),
-                Timeout = TimeSpan.FromMilliseconds(10),
             };
         }
 
@@ -71,7 +70,7 @@ namespace JsonRpcLite.Network
         public async Task<byte[]> ProcessAsync(string serviceName, byte[] requestData)
         {
             var content = new ByteArrayContent(requestData);
-            var response = await _httpClient.PostAsync($"/{serviceName}", content);
+            var response = await _httpClient.PostAsync($"/{serviceName}", content).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadAsByteArrayAsync();

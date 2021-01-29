@@ -25,10 +25,6 @@ namespace JsonRpcLite.Services
         public bool IsReturnTypeAllowed(Type type)
         {
             //Special case.
-            if (typeof(DateTime) == type)
-            {
-                return true;
-            }
             if (typeof(Task).IsAssignableFrom(type))
             {
                 return true;
@@ -44,17 +40,17 @@ namespace JsonRpcLite.Services
         /// <returns>True if allow otherwise not.</returns>
         public bool IsParameterTypeAllowed(Type type)
         {
-            //Special case.
-            if (typeof(DateTime) == type)
-            {
-                return true;
-            }
             var level = 0;
             return InternalIsTypeAllowed(type, ref level);
         }
 
         private bool InternalIsTypeAllowed(Type type, ref int level)
         {
+            //Special case.
+            if (typeof(DateTime) == type)
+            {
+                return true;
+            }
             level++;
             if (level > MaxDepth)
             {

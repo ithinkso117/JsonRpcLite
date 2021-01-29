@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.InProcess;
 using JsonRpcLite.Log;
@@ -21,6 +22,7 @@ namespace TestServer
 
         static void Main(string[] args)
         {
+            ThreadPool.SetMinThreads(65535, 65535);
             var server = new JsonRpcServer();
             server.RegisterService<ITest2>(new InterfaceTest());
 
@@ -38,6 +40,8 @@ namespace TestServer
                 server.UseEngine(engine);
                 client.UseEngine(engine);
                 server.Start();
+                var proxy = client.CreateProxy<ITest2>("Test2");
+                TestAddAsync(proxy);
                 for (var i = 0; i < 100; i++)
                 {
                     Benchmark(client,TestData);
@@ -55,6 +59,12 @@ namespace TestServer
                 client.UseEngine(clientEngine);
                 var proxy = client.CreateProxy<ITest2>("Test2");
                 TestAddAsync(proxy);
+
+                for (var i = 0; i < 3; i++)
+                {
+                    Benchmark(client, TestData);
+                    Console.WriteLine();
+                }
             }
             Console.ReadLine();
         }

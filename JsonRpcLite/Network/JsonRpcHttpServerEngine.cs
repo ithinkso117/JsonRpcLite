@@ -15,9 +15,11 @@ namespace JsonRpcLite.Network
 {
     public class JsonRpcHttpServerEngine : IJsonRpcServerEngine
     {
-        private readonly ManualResetEvent _stopEvent = new(true);
+
         private readonly string _prefix;
         private readonly bool _enableSmd;
+
+        private bool _stopped;
 
         private HttpListener _listener;
 
@@ -44,13 +46,13 @@ namespace JsonRpcLite.Network
         public void Start(IJsonRpcRouter router)
         {
             _router = router ?? throw new ArgumentNullException(nameof(router));
-            _stopEvent.Reset();
+            _stopped = false;
             _listener = new HttpListener();
             _listener.Prefixes.Add(_prefix);
             _listener.Start();
             Task.Factory.StartNew(async () =>
             {
-                while (!_stopEvent.WaitOne(1))
+                while (!_stopped)
                 {
                     try
                     {
@@ -73,7 +75,7 @@ namespace JsonRpcLite.Network
         public void Stop()
         {
             _router = null;
-            _stopEvent.Set();
+            _stopped = true;
             _listener.Close();
             Logger.WriteInfo("JsonRpc http server engine stopped.");
         }
