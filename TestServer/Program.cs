@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -42,11 +43,15 @@ namespace TestServer
                 server.Start();
                 var proxy = client.CreateProxy<ITest2>("Test2");
                 TestAddAsync(proxy);
-                for (var i = 0; i < 100; i++)
+
+                var statisticsList = new List<int>();
+                for (var i = 0; i < 20; i++)
                 {
-                    Benchmark(client,TestData);
+                    statisticsList.Add(Benchmark(client,TestData));
                     Console.WriteLine();
                 }
+                Console.WriteLine();
+                Console.WriteLine($"Best: {statisticsList.Max()} rpc/sec, \t Average: {(int)statisticsList.Average()} rpc/sec, \t Worst: {statisticsList.Min()} rpc/sec");
             }
             else
             {
@@ -60,11 +65,14 @@ namespace TestServer
                 var proxy = client.CreateProxy<ITest2>("Test2");
                 TestAddAsync(proxy);
 
+                var statisticsList = new List<int>();
                 for (var i = 0; i < 3; i++)
                 {
-                    Benchmark(client, TestData);
+                    statisticsList.Add(Benchmark(client, TestData));
                     Console.WriteLine();
                 }
+                Console.WriteLine();
+                Console.WriteLine($"Best: {statisticsList.Max()} rpc/sec, \t Average: {(int)statisticsList.Average()} rpc/sec, \t Worst: {statisticsList.Min()} rpc/sec");
             }
             Console.ReadLine();
         }
@@ -85,8 +93,9 @@ namespace TestServer
             });
         }
 
-        private static void Benchmark(JsonRpcClient client, string[] testData)
+        private static int Benchmark(JsonRpcClient client, string[] testData)
         {
+            var statisticsList = new List<double>();
             Console.WriteLine("Starting benchmark");
             var count = 50;
             var iterations = 7;
@@ -110,11 +119,15 @@ namespace TestServer
                     task.Dispose();
                 }
                 sw.Stop();
+                if (sw.ElapsedMilliseconds != 0)
+                {
+                    var statistics = count * 1000d / sw.ElapsedMilliseconds;
+                    statisticsList.Add(statistics);
+                }
                 Console.WriteLine("processed {0:N0} rpc in \t {1:N0}ms for \t {2:N} rpc/sec", count, sw.ElapsedMilliseconds, count * 1000d / sw.ElapsedMilliseconds);
             }
-
-
             Console.WriteLine("Finished benchmark...");
+            return (int)statisticsList.Average();
         }
     }
 }

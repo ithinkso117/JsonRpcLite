@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,9 +22,44 @@ namespace JsonRpcLite.Rpc
             _engine = engine;
         }
 
-        public T CreateProxy<T>(string serviceName)
+        /// <summary>
+        /// Create a proxy for given interface.
+        /// </summary>
+        /// <typeparam name="T">The interface type.</typeparam>
+        /// <param name="serviceName">The name of the service.</param>
+        /// <returns>The proxy which implement the given interface.</returns>
+        public T CreateProxy<T>(string serviceName = null)
         {
-            return JsonRpcClientProxy.CreateProxy<T>(serviceName, this);
+            var interfaceType = typeof(T);
+            if (!interfaceType.IsInterface)
+            {
+                throw new InvalidOperationException($"{nameof(T)} is not an interface");
+            }
+            var name = serviceName;
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                name = interfaceType.Name;
+                //Remove the start "I" char for the interface name if exists.
+                if (name.StartsWith("i", StringComparison.InvariantCultureIgnoreCase) && name.Length > 1)
+                {
+                    name = name.Substring(1);
+                }
+
+                var serviceAttributes = interfaceType.GetCustomAttributes(typeof(RpcServiceAttribute), false);
+                if (serviceAttributes.Length > 1)
+                {
+                    throw new InvalidOperationException($"Service {interfaceType.Name} defined more than one rpc service attributes.");
+                }
+                if (serviceAttributes.Length > 0)
+                {
+                    var serviceAttribute = (RpcServiceAttribute)serviceAttributes[0];
+                    if (!string.IsNullOrEmpty(serviceAttribute.Name))
+                    {
+                        name = serviceAttribute.Name;
+                    }
+                }
+            }
+            return JsonRpcClientProxy.CreateProxy<T>(name, this);
         }
 
         /// <summary>

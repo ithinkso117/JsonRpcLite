@@ -4,7 +4,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.Log;
 using JsonRpcLite.Rpc;
@@ -104,14 +103,13 @@ namespace JsonRpcLite.Network
         /// Parser the request url, get the calling information.
         /// </summary>
         /// <param name="requestUri">The uri requested by the caller.</param>
-        /// <returns>The JsonRpcServiceInfo parsed from the uri.</returns>
-        private JsonRpcServiceInfo GetRpcServiceInfo(Uri requestUri)
+        /// <returns>The service name parsed from the uri.</returns>
+        private string GetRpcServiceName(Uri requestUri)
         {
             var url = $"{requestUri.AbsolutePath.Trim('/')}";
             var urlParts = url.Split('/');
             if (urlParts.Length != 1) return null;
-            var serviceName = urlParts[0];
-            return new JsonRpcServiceInfo(serviceName);
+            return urlParts[0];
         }
 
 
@@ -122,8 +120,8 @@ namespace JsonRpcLite.Network
                 var httpMethod = context.Request.HttpMethod.ToLower();
                 Logger.WriteVerbose($"Handle request [{httpMethod}]: {context.Request.Url}");
 
-                var serviceInfo = GetRpcServiceInfo(context.Request.Url);
-                if (serviceInfo == null)
+                var serviceName = GetRpcServiceName(context.Request.Url);
+                if (string.IsNullOrEmpty(serviceName))
                 {
                     Logger.WriteWarning($"Service for request: {context.Request.Url} not found.");
                     throw new HttpException((int)HttpStatusCode.ServiceUnavailable, "Service does not exist.");
@@ -132,7 +130,6 @@ namespace JsonRpcLite.Network
                 if (httpMethod == "get")
                 {
                     var smdRequest = false;
-                    var serviceName = serviceInfo.Name;
                     var smdIndex = serviceName.LastIndexOf(".smd", StringComparison.InvariantCultureIgnoreCase);
                     if (smdIndex != -1)
                     {
@@ -165,7 +162,6 @@ namespace JsonRpcLite.Network
                 }
                 else if (httpMethod == "post")
                 {
-                    var serviceName = serviceInfo.Name;
                     if (!_router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {context.Request.Url} not found.");
