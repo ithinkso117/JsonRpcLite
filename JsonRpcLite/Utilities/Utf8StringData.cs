@@ -8,7 +8,7 @@ namespace JsonRpcLite.Utilities
     /// <summary>
     /// Use pool to generate stream which contains UTF8 stream.
     /// </summary>
-    public class Utf8StringData : IDisposable
+    internal class Utf8StringData : IDisposable
     {
         private static readonly ObjectPool<Utf8StringData, string> Pool = new((str) => new Utf8StringData(str),  (data, str) => { data.Update(str); });
 
@@ -21,6 +21,11 @@ namespace JsonRpcLite.Utilities
         /// </summary>
         public Stream Stream { get; private set; }
 
+
+        private Utf8StringData()
+        {
+
+        }
 
         /// <summary>
         /// Get Utf8StringData from pool.

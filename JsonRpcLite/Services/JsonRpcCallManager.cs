@@ -189,11 +189,15 @@ namespace JsonRpcLite.Services
         public static void RegisterService(object service)
         {
             var serviceType = service.GetType();
+            if (serviceType.IsGenericType)
+            {
+                throw new InvalidOperationException("Generic type service is not supported.");
+            }
             var serviceName = serviceType.Name;
             var serviceAttributes = serviceType.GetCustomAttributes(typeof(RpcServiceAttribute), false);
             if (serviceAttributes.Length == 0)
             {
-                throw new InvalidOperationException($"Can not register service without [RpcService] attribute.");
+                throw new InvalidOperationException("Can not register service without [RpcService] attribute.");
             }
             if (serviceAttributes.Length > 1)
             {
@@ -267,6 +271,11 @@ namespace JsonRpcLite.Services
         {
             //For service with interface, only method on interface can be registered.
             var interfaceType = typeof(T);
+
+            if (interfaceType.IsGenericType)
+            {
+                throw new InvalidOperationException("Generic type service is not supported.");
+            }
 
             if (!interfaceType.IsInterface)
             {

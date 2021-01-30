@@ -49,6 +49,8 @@ namespace JsonRpcLite.Network
             _stopped = false;
             _listener = new HttpListener();
             _listener.Prefixes.Add(_prefix);
+            _listener.UnsafeConnectionNtlmAuthentication = true;
+            _listener.IgnoreWriteExceptions = true;
             _listener.Start();
             Task.Factory.StartNew(async () =>
             {

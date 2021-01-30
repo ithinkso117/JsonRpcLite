@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -65,70 +63,6 @@ namespace JsonRpcLite.Utilities
                 Creators.Add(type, creator);
             }
             return Creators[type]();
-        }
-
-
-        /// <summary>
-        /// Create new object by using Emit, it will be much faster than the reflection.
-        /// </summary>
-        /// <param name="type">The type to create.</param>
-        /// <param name="parameters">The key value of the parameters, they will be converted according to the types.</param>
-        /// <returns>The created object.</returns>
-        public static object New(this Type type, NameValueCollection parameters)
-        {
-            if(!Setters.TryGetValue(type, out var setter))
-            {
-                var properties = type.GetProperties().Where(x => x.CanRead && x.CanWrite).ToArray();
-                var setMethods = properties.Select(x=> type.GetMethod($"set_{x.Name}")).ToArray();
-
-                var dynamicMethod = new DynamicMethod(
-                    name: $"Set_{type.Name}_Parameters",
-                    returnType: null,
-                    parameterTypes: new[] { typeof(object), typeof(object[]) });
-
-                var methodIl = dynamicMethod.GetILGenerator();
-
-                for (var i = 0; i < properties.Length; i++)
-                {
-                    var property = properties[i];
-                    var setMethod = setMethods[i];
-
-                    methodIl.Emit(OpCodes.Ldarg_0);
-                    methodIl.Emit(type.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, type);
-                    methodIl.Emit(OpCodes.Ldarg_1);
-                    //Put an integer value in stack which is the index in object[]
-                    methodIl.Emit(OpCodes.Ldc_I4_S, i);
-                    //Get the reference of index which is the integer value from the object[].
-                    methodIl.Emit(OpCodes.Ldelem_Ref);
-                    //Cast or unbox the reference.
-                    methodIl.Emit(property.PropertyType.IsValueType ? OpCodes.Unbox_Any : OpCodes.Castclass, property.PropertyType);
-                    methodIl.Emit(OpCodes.Callvirt, setMethod);
-                }
-                methodIl.Emit(OpCodes.Ret);
-                var setParameters = (SetParameters)dynamicMethod.CreateDelegate(typeof(SetParameters));
-                setter = new PropertySetter(type, properties, setParameters);
-                Setters.Add(type, setter);
-            }
-            var obj = type.New();
-            var args = new List<object>();
-            foreach (var property in setter.Properties)
-            {
-                if (parameters.AllKeys.Contains(property.Name))
-                {
-                    var propertyValue = Convert.ChangeType(parameters[property.Name], property.PropertyType);
-                    if (propertyValue != null && property.PropertyType == typeof(string))
-                    {
-                        propertyValue = Uri.UnescapeDataString((string)propertyValue);
-                    }
-                    args.Add(propertyValue);
-                }
-                else
-                {
-                    args.Add(property.PropertyType.Default());
-                }
-            }
-            setter.SetParameters(obj, args.ToArray());
-            return obj;
         }
 
 
