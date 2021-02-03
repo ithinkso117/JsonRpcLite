@@ -54,10 +54,20 @@ namespace TestServer
             }
             else
             {
-                var serverEngine = new JsonRpcKestrelServerEngine(IPAddress.Parse("127.0.0.1"), 8090);
-                server.UseEngine(serverEngine);
+                IJsonRpcServerEngine serverEngine;
+                if (args.Contains("-kestrel"))
+                {
+                    serverEngine = new JsonRpcKestrelServerEngine(IPAddress.Any, 8090);
+                    server.UseEngine(serverEngine);
+                }
+                else
+                {
+                    serverEngine = new JsonRpcHttpServerEngine("http://*:8090/");
+                    server.UseEngine(serverEngine);
+                }
+
                 server.Start();
-                Console.WriteLine("JsonRpc HttpServer Started.");
+                Console.WriteLine($"JsonRpc HttpServer Started with engine: {serverEngine.Name}.");
             }
             Console.ReadLine();
         }

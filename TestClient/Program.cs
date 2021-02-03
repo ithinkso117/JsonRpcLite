@@ -22,8 +22,13 @@ namespace TestClient
         static void Main(string[] args)
         {
             ThreadPool.SetMinThreads(65535, 65535);
+            var remoteUrl = "http://127.0.0.1:8090/";
+            if (args.Length != 0)
+            {
+                remoteUrl = args[0];
+            }
             var client = new JsonRpcClient();
-            var clientEngine = new JsonRpcHttpClientEngine("http://127.0.0.1:8090/");
+            var clientEngine = new JsonRpcHttpClientEngine(remoteUrl);
             client.UseEngine(clientEngine);
 
             var statisticsList = new List<int>();
