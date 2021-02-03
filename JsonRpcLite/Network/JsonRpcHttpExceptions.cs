@@ -2,7 +2,7 @@
 
 namespace JsonRpcLite.Network
 {
-    internal class HttpException:Exception
+    public class HttpException:Exception
     {
         /// <summary>
         /// Gets the error code of the rpc call.

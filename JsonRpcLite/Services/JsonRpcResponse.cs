@@ -13,7 +13,7 @@
         public object Result { get; protected set; }
 
 
-        internal JsonRpcResponse(object id = null)
+        public JsonRpcResponse(object id = null)
         {
             Id = id;
         }

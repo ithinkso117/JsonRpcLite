@@ -7,7 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonRpcLite", "JsonRpcLite\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestServer", "TestServer\TestServer.csproj", "{0DB8A221-AF80-4980-B466-447A38C33758}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "jrl", "jrl\jrl.csproj", "{F97D3D4F-2464-432F-8C92-0A50685DF9DF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "jrl", "jrl\jrl.csproj", "{F97D3D4F-2464-432F-8C92-0A50685DF9DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonRpcLite.Kestrel", "JsonRpcLite.Kestrel\JsonRpcLite.Kestrel.csproj", "{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "TestClient\TestClient.csproj", "{2D661961-2C18-4DCD-859A-B166833AAF13}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +31,14 @@ Global
 		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F97D3D4F-2464-432F-8C92-0A50685DF9DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D661961-2C18-4DCD-859A-B166833AAF13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D661961-2C18-4DCD-859A-B166833AAF13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D661961-2C18-4DCD-859A-B166833AAF13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D661961-2C18-4DCD-859A-B166833AAF13}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

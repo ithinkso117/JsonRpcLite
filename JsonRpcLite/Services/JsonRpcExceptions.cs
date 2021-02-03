@@ -2,7 +2,7 @@
 
 namespace JsonRpcLite.Services
 {
-    internal class RpcException : Exception
+    public class RpcException : Exception
     {
         /// <summary>
         /// Gets the error code of the rpc call.
@@ -24,7 +24,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// Invalid JSON was received by the server. An error occurred on the server while parsing the JSON text.
     /// </summary>
-    internal class ParseErrorException : RpcException
+    public class ParseErrorException : RpcException
     {
         public ParseErrorException(string internalMessage = "") : base(-32700,
             "Invalid JSON was received by the server. An error occurred on the server while parsing the JSON text.",
@@ -36,7 +36,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// The JSON sent is not a valid Request object.
     /// </summary>
-    internal class InvalidRequestException : RpcException
+    public class InvalidRequestException : RpcException
     {
         public InvalidRequestException(string internalMessage = "") : base(-32600,
             "The JSON sent is not a valid Request object.", internalMessage)
@@ -47,7 +47,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// The method does not exist / is not available.
     /// </summary>
-    internal class MethodNotFoundException : RpcException
+    public class MethodNotFoundException : RpcException
     {
         public MethodNotFoundException(string internalMessage = "") : base(-32601,
             "The method does not exist / is not available.", internalMessage)
@@ -58,7 +58,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// Invalid method parameter(s).
     /// </summary>
-    internal class InvalidParamsException : RpcException
+    public class InvalidParamsException : RpcException
     {
         public InvalidParamsException(string internalMessage = "") : base(-32602, "Invalid method parameter(s).",
             internalMessage)
@@ -69,7 +69,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// Internal JSON-RPC error.
     /// </summary>
-    internal class InternalErrorException : RpcException
+    public class InternalErrorException : RpcException
     {
         public InternalErrorException(string internalMessage = "") : base(-32603, "Internal JSON-RPC error.",
             internalMessage)
@@ -80,7 +80,7 @@ namespace JsonRpcLite.Services
     /// <summary>
     /// Server errors.
     /// </summary>
-    internal class ServerErrorException : RpcException
+    public class ServerErrorException : RpcException
     {
         private static int _defaultServerErrorCode = -32000;
 

@@ -5,13 +5,7 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <Prefer32Bit>false</Prefer32Bit>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\JsonRpcLite.Kestrel\JsonRpcLite.Kestrel.csproj" />
     <ProjectReference Include="..\JsonRpcLite\JsonRpcLite.csproj" />
   </ItemGroup>
 

@@ -2,16 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using JsonRpcLite.InProcess;
-using JsonRpcLite.Kestrel;
-using JsonRpcLite.Log;
 using JsonRpcLite.Network;
 using JsonRpcLite.Rpc;
 
-namespace TestServer
+namespace TestClient
 {
     class Program
     {
@@ -26,43 +22,22 @@ namespace TestServer
         static void Main(string[] args)
         {
             ThreadPool.SetMinThreads(65535, 65535);
-            var server = new JsonRpcServer();
-            server.RegisterService<ITest2>(new InterfaceTest());
-
             var client = new JsonRpcClient();
+            var clientEngine = new JsonRpcHttpClientEngine("http://127.0.0.1:8090/");
+            client.UseEngine(clientEngine);
 
-            if (args.Contains("-debug"))
+            var statisticsList = new List<int>();
+            for (var i = 0; i < 3; i++)
             {
-                Logger.DebugMode = true;
-                Logger.UseDefaultWriter();
-            }
-
-            if (args.Contains("-benchmark"))
-            {
-                var engine = new JsonRpcInProcessEngine();
-                server.UseEngine(engine);
-                client.UseEngine(engine);
-                server.Start();
-                var statisticsList = new List<int>();
-                for (var i = 0; i < 20; i++)
-                {
-                    statisticsList.Add(Benchmark(client, TestData));
-                    Console.WriteLine();
-                }
+                statisticsList.Add(Benchmark(client, TestData));
                 Console.WriteLine();
-                Console.WriteLine($"Best: {statisticsList.Max()} rpc/sec, \t Average: {(int)statisticsList.Average()} rpc/sec, \t Worst: {statisticsList.Min()} rpc/sec");
             }
-            else
-            {
-                var serverEngine = new JsonRpcKestrelServerEngine(IPAddress.Parse("127.0.0.1"), 8090);
-                server.UseEngine(serverEngine);
-                server.Start();
-                Console.WriteLine("JsonRpc HttpServer Started.");
-            }
+            Console.WriteLine();
+            Console.WriteLine($"Best: {statisticsList.Max()} rpc/sec, \t Average: {(int)statisticsList.Average()} rpc/sec, \t Worst: {statisticsList.Min()} rpc/sec");
             Console.ReadLine();
         }
 
-        public static Task Process(JsonRpcClient client,string requestStr)
+        public static Task Process(JsonRpcClient client, string requestStr)
         {
             return Task.Factory.StartNew(() =>
             {
@@ -86,11 +61,11 @@ namespace TestServer
 
                 for (int i = 0; i < count; i += 5)
                 {
-                    tasks[i] = Process(client,testData[0]);
-                    tasks[i + 1] = Process(client,testData[1]);
-                    tasks[i + 2] = Process(client,testData[2]);
-                    tasks[i + 3] = Process(client,testData[3]);
-                    tasks[i + 4] = Process(client,testData[4]);
+                    tasks[i] = Process(client, testData[0]);
+                    tasks[i + 1] = Process(client, testData[1]);
+                    tasks[i + 2] = Process(client, testData[2]);
+                    tasks[i + 3] = Process(client, testData[3]);
+                    tasks[i + 4] = Process(client, testData[4]);
                 }
                 Task.WaitAll(tasks);
                 foreach (var task in tasks)

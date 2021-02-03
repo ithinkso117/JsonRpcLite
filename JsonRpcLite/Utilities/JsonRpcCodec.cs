@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace JsonRpcLite.Utilities
 {
-    internal class JsonRpcCodec
+    public class JsonRpcCodec
     {
         private static readonly ObjectPool<JsonRpcRequestData> RequestDataPool = new(() => new JsonRpcRequestData());
         private static readonly ObjectPool<JsonRpcResponseData> ResponseDataPool = new(() => new JsonRpcResponseData());
@@ -271,7 +271,7 @@ namespace JsonRpcLite.Utilities
         /// <param name="paramString">The parameter(s)'s json string to be converted.</param>
         /// <param name="parameters">The parameters of the calling method.</param>
         /// <returns>The converted arguments.</returns>
-        public static async Task<object[]> DecodeArgumentsAsync(string paramString, IReadOnlyList<JsonRpcCallParameter> parameters)
+        internal static async Task<object[]> DecodeArgumentsAsync(string paramString, IReadOnlyList<JsonRpcCallParameter> parameters)
         {
             if (parameters.Count == 0)
             {
