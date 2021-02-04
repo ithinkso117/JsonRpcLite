@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 
 namespace JsonRpcLite.Utilities
 {
-    public class ObjectPool<T>
+    internal class ObjectPool<T>
     {
         private readonly ConcurrentBag<T> _objects;
         private readonly Func<T> _objectGenerator;
@@ -29,7 +29,7 @@ namespace JsonRpcLite.Utilities
     }
 
 
-    public class ObjectPool<T,TParam>
+    internal class ObjectPool<T,TParam>
     {
         private readonly ConcurrentBag<T> _objects;
         private readonly Func<TParam,T> _objectGenerator;

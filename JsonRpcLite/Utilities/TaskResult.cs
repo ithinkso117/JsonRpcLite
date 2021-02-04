@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace JsonRpcLite.Utilities
 {
-    public static class TaskResult
+    internal static class TaskResult
     {
         private static readonly ConcurrentDictionary<Type, Lazy<Func<Task, Task<object>>>> Caches = new();
 

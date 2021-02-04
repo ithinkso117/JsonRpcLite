@@ -23,7 +23,7 @@ namespace TestClient
         {
             ThreadPool.SetMinThreads(65535, 65535);
             var remoteUrl = "http://127.0.0.1:8090/";
-            if (args.Length != 0)
+            if (args.Length != 0 && !args[0].Contains('-'))
             {
                 remoteUrl = args[0];
             }
@@ -31,8 +31,13 @@ namespace TestClient
             var clientEngine = new JsonRpcHttpClientEngine(remoteUrl);
             client.UseEngine(clientEngine);
 
+            var testCount = 3;
+            if (args.Contains("-mltest"))
+            {
+                testCount = 100000000;
+            }
             var statisticsList = new List<int>();
-            for (var i = 0; i < 3; i++)
+            for (var i = 0; i < testCount; i++)
             {
                 statisticsList.Add(Benchmark(client, TestData));
                 Console.WriteLine();
