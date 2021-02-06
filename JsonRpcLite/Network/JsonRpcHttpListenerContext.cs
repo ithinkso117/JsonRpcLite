@@ -1,5 +1,7 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Net;
+using JsonRpcLite.Log;
 
 namespace JsonRpcLite.Network
 {
@@ -114,6 +116,22 @@ namespace JsonRpcLite.Network
                 return string.Empty;
             }
             return _context.Request.Url.AbsolutePath;
+        }
+
+
+        /// <summary>
+        /// Close the context.
+        /// </summary>
+        public void Close()
+        {
+            try
+            {
+                _context.Response.Close();
+            }
+            catch
+            {
+                //No need handle exception when close the response.
+            }
         }
     }
 }

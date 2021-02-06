@@ -41,7 +41,6 @@ namespace JsonRpcLite.Network
             };
         }
 
-
         /// <summary>
         /// Process a string request which contains the json data.
         /// </summary>

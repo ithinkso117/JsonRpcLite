@@ -111,5 +111,13 @@ namespace JsonRpcLite.Kestrel
         {
             return _context.Request.Path;
         }
+
+        /// <summary>
+        /// Close the context.
+        /// </summary>
+        public void Close()
+        { 
+            //No need close for Kestrel server;
+        }
     }
 }

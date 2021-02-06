@@ -1,13 +1,15 @@
 ﻿using System.Net;
-using JsonRpcLite.Services;
+using System.Threading.Tasks;
 using JsonRpcLite.Network;
+using JsonRpcLite.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace JsonRpcLite.Kestrel
 {
-    public class JsonRpcKestrelServerEngine : JsonRpcHttpServerEngineBase
+    public class JsonRpcKestrelWebSocketServerEngine:JsonRpcWebSocketServerEngineBase
     {
         private readonly IPAddress _address;
         private readonly int _port;
@@ -15,20 +17,13 @@ namespace JsonRpcLite.Kestrel
         private IJsonRpcRouter _router;
         private IWebHost _host;
 
-
-        /// <summary>
-        /// Gets whether the smd function is enabled.
-        /// </summary>
-        protected override bool SmdEnabled { get; }
-
-
-        public JsonRpcKestrelServerEngine(IPAddress address, int port, bool enableSmd = true)
+        public JsonRpcKestrelWebSocketServerEngine(IPAddress address, int port)
         {
-            Name = nameof(JsonRpcKestrelServerEngine);
+            Name = nameof(JsonRpcKestrelWebSocketServerEngine);
             _address = address;
             _port = port;
-            SmdEnabled = enableSmd;
         }
+
 
         /// <summary>
         /// Start the engine and use given router to handle request.
@@ -49,16 +44,31 @@ namespace JsonRpcLite.Kestrel
                 })
                 .Configure(app =>
                 {
-                    app.Run(context =>
-                    {
-                        var jsonRpcHttpContext = new JsonRpcKestrelHttpContext(context);
-                        return HandleRequestAsync(jsonRpcHttpContext, _router);
-                    });
+                    app.UseWebSockets();
+                    app.Run(HandleRequestAsync);
                 });
             _host = builder.Build();
             await _host.RunAsync().ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Handle the http context from kestrel
+        /// </summary>
+        /// <param name="context">The context to handle.</param>
+        /// <returns>Void</returns>
+        private async Task HandleRequestAsync(HttpContext context)
+        {
+            if (context.WebSockets.IsWebSocketRequest)
+            {
+                var requestPath = context.Request.Path;
+                var socket = await context.WebSockets.AcceptWebSocketAsync("JsonRpcLite").ConfigureAwait(false);
+                await HandleRequestAsync(requestPath, _router, socket).ConfigureAwait(false);
+            }
+            else
+            {
+                context.Response.StatusCode = 400;
+            }
+        }
 
         /// <summary>
         /// Stop the engine.
@@ -68,6 +78,5 @@ namespace JsonRpcLite.Kestrel
             await _host.StopAsync().ConfigureAwait(false);
             _host.Dispose();
         }
-
     }
 }

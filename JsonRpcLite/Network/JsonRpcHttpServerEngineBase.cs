@@ -258,7 +258,7 @@ namespace JsonRpcLite.Network
         /// <param name="context">The http context to handle.</param>
         /// <param name="router">The router to dispatch the request data.</param>
         /// <returns>Void</returns>
-        protected async Task HandleContextAsync(IJsonRpcHttpContext context, IJsonRpcRouter router)
+        protected async Task HandleRequestAsync(IJsonRpcHttpContext context, IJsonRpcRouter router)
         {
             var httpMethod = context.GetRequestHttpMethod();
             var requestPath = context.GetRequestPath();
@@ -269,7 +269,7 @@ namespace JsonRpcLite.Network
                 if (string.IsNullOrEmpty(serviceName))
                 {
                     Logger.WriteWarning($"Service for request: {requestPath} not found.");
-                    throw new HttpException((int)HttpStatusCode.ServiceUnavailable, "Service does not exist.");
+                    throw new HttpException((int) HttpStatusCode.ServiceUnavailable, "Service does not exist.");
                 }
 
                 if (httpMethod == "get")
@@ -285,7 +285,8 @@ namespace JsonRpcLite.Network
                     if (!router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {requestPath} not found.");
-                        throw new HttpException((int)HttpStatusCode.ServiceUnavailable, $"Service [{serviceName}] does not exist.");
+                        throw new HttpException((int) HttpStatusCode.ServiceUnavailable,
+                            $"Service [{serviceName}] does not exist.");
                     }
 
                     if (SmdEnabled && smdRequest)
@@ -297,12 +298,13 @@ namespace JsonRpcLite.Network
                         }
                         catch (Exception ex)
                         {
-                            throw new HttpException((int)HttpStatusCode.InternalServerError, ex.Message);
+                            throw new HttpException((int) HttpStatusCode.InternalServerError, ex.Message);
                         }
                     }
                     else
                     {
-                        throw new HttpException((int)HttpStatusCode.NotFound, $"Resource for {requestPath} does not exist.");
+                        throw new HttpException((int) HttpStatusCode.NotFound,
+                            $"Resource for {requestPath} does not exist.");
                     }
                 }
                 else if (httpMethod == "post")
@@ -310,8 +312,10 @@ namespace JsonRpcLite.Network
                     if (!router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {requestPath} not found.");
-                        throw new ServerErrorException("Service does not exist.", $"Service [{serviceName}] does not exist.");
+                        throw new ServerErrorException("Service does not exist.",
+                            $"Service [{serviceName}] does not exist.");
                     }
+
                     try
                     {
                         await DispatchAsync(context, router, serviceName).ConfigureAwait(false);
@@ -322,13 +326,14 @@ namespace JsonRpcLite.Network
                         {
                             throw;
                         }
+
                         throw new ServerErrorException("Internal server error.", ex.Message);
                     }
 
                 }
                 else
                 {
-                    throw new HttpException((int)HttpStatusCode.MethodNotAllowed, $"Invalid http-method:{httpMethod}");
+                    throw new HttpException((int) HttpStatusCode.MethodNotAllowed, $"Invalid http-method:{httpMethod}");
                 }
             }
             catch (Exception ex)
@@ -347,12 +352,17 @@ namespace JsonRpcLite.Network
                     }
                     else
                     {
-                        var serverError = new InternalErrorException($"Handle request {requestPath} error: {ex.Message}");
+                        var serverError =
+                            new InternalErrorException($"Handle request {requestPath} error: {ex.Message}");
                         response.WriteResult(serverError);
                     }
-                    await WriteRpcResponsesAsync(context, new[] { response }).ConfigureAwait(false);
-                }
 
+                    await WriteRpcResponsesAsync(context, new[] {response}).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                context.Close();
             }
         }
     }

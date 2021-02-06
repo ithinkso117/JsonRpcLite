@@ -7,27 +7,19 @@ using JsonRpcLite.Utilities;
 
 namespace JsonRpcLite.Network
 {
-    public class JsonRpcHttpServerEngine : JsonRpcHttpServerEngineBase
+    public class JsonRpcWebSocketServerEngine : JsonRpcWebSocketServerEngineBase
     {
         private readonly string _prefix;
 
+        private HttpListener _listener;
+        private IJsonRpcRouter _router;
         private bool _stopped;
 
-        private HttpListener _listener;
 
-        private IJsonRpcRouter _router;
-
-        /// <summary>
-        /// Gets whether the smd function is enabled.
-        /// </summary>
-        protected override bool SmdEnabled { get; }
-
-
-        public JsonRpcHttpServerEngine(string prefix, bool enableSmd = true)
+        public JsonRpcWebSocketServerEngine(string prefix)
         {
-            Name = nameof(JsonRpcHttpServerEngine);
+            Name = nameof(JsonRpcWebSocketServerEngine);
             _prefix = prefix;
-            SmdEnabled = enableSmd;
         }
 
 
@@ -51,7 +43,21 @@ namespace JsonRpcLite.Network
                     try
                     {
                         var context = await _listener.GetContextAsync().ConfigureAwait(false);
-                        HandleContextAsync(context);
+                        if (context.Request.IsWebSocketRequest)
+                        {
+                            var requestPath = string.Empty;
+                            if (context.Request.Url != null)
+                            {
+                                requestPath = context.Request.Url.AbsolutePath;
+                            }
+                            var websocketContext = await context.AcceptWebSocketAsync("JsonRpcLite").ConfigureAwait(false);
+                            ProcessRequestAsync(requestPath, _router, websocketContext.WebSocket);
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -59,7 +65,7 @@ namespace JsonRpcLite.Network
                     }
                 }
             }, TaskCreationOptions.LongRunning);
-            Logger.WriteInfo("JsonRpc http server engine started.");
+            Logger.WriteInfo("JsonRpc websocket server engine started.");
         }
 
 
@@ -71,18 +77,7 @@ namespace JsonRpcLite.Network
             _router = null;
             _stopped = true;
             _listener.Close();
-            Logger.WriteInfo("JsonRpc http server engine stopped.");
-        }
-
-        
-        /// <summary>
-        /// Call base HandleContextAsync.
-        /// </summary>
-        /// <param name="context">The http listener context</param>
-        private async void HandleContextAsync(HttpListenerContext context)
-        {
-            var jsonRpcHttpContext = new JsonRpcHttpListenerContext(context);
-            await HandleRequestAsync(jsonRpcHttpContext, _router);
+            Logger.WriteInfo("JsonRpc websocket server engine stopped.");
         }
     }
 }

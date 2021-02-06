@@ -27,7 +27,6 @@ namespace TestServer
         {
             ThreadPool.SetMinThreads(65535, 65535);
             var server = new JsonRpcServer();
-            server.RegisterService<ITest2>(new InterfaceTest());
 
             var client = new JsonRpcClient();
 
@@ -55,7 +54,18 @@ namespace TestServer
             else
             {
                 IJsonRpcServerEngine serverEngine;
-                if (args.Contains("-kestrel"))
+                if (args.Contains("-websocket"))
+                {
+                    serverEngine = new JsonRpcWebSocketServerEngine("http://*:8090/");
+                    server.UseEngine(serverEngine);
+                }
+                else if(args.Contains("-websocket-kestrel"))
+                {
+                    serverEngine = new JsonRpcKestrelWebSocketServerEngine(IPAddress.Any, 8090);
+                    server.UseEngine(serverEngine);
+                }
+                else
+                if (args.Contains("-http-kestrel"))
                 {
                     serverEngine = new JsonRpcKestrelServerEngine(IPAddress.Any, 8090);
                     server.UseEngine(serverEngine);
@@ -67,7 +77,7 @@ namespace TestServer
                 }
 
                 server.Start();
-                Console.WriteLine($"JsonRpc HttpServer Started with engine: {serverEngine.Name}.");
+                Console.WriteLine($"JsonRpc Server Started with engine: {serverEngine.Name}.");
             }
             Console.ReadLine();
         }

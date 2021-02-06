@@ -2,6 +2,7 @@
   "profiles": {
     "TestServer": {
       "commandName": "Project",
+      "commandLineArgs": "-websocket-kestrel",
       "nativeDebugging": true
     }
   }

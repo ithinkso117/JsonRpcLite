@@ -68,5 +68,10 @@ namespace JsonRpcLite.Network
         /// </summary>
         /// <returns>The call path from the request.</returns>
         string GetRequestPath();
+
+        /// <summary>
+        /// Close the context.
+        /// </summary>
+        void Close();
     }
 }

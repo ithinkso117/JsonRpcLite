@@ -23,23 +23,28 @@ namespace TestClient
         {
             ThreadPool.SetMinThreads(65535, 65535);
             var remoteUrl = "http://127.0.0.1:8090/";
-            if (args.Length != 0 && !args[0].Contains('-'))
+            if (args.Length != 0 && (args[0].StartsWith("http") || args[0].StartsWith("ws")))
             {
                 remoteUrl = args[0];
             }
             var client = new JsonRpcClient();
-            var clientEngine = new JsonRpcHttpClientEngine(remoteUrl);
+            IJsonRpcClientEngine clientEngine = remoteUrl.StartsWith("http")? 
+                new JsonRpcHttpClientEngine(remoteUrl):
+                new JsonRpcWebSocketClientEngine(remoteUrl);
+
+            bool ws = clientEngine is JsonRpcWebSocketClientEngine;
+
             client.UseEngine(clientEngine);
 
             var testCount = 3;
-            if (args.Contains("-mltest"))
+            if (args.Contains("-benchmark"))
             {
-                testCount = 100000000;
+                testCount = 100;
             }
             var statisticsList = new List<int>();
             for (var i = 0; i < testCount; i++)
             {
-                statisticsList.Add(Benchmark(client, TestData));
+                statisticsList.Add(Benchmark(client, TestData, ws));
                 Console.WriteLine();
             }
             Console.WriteLine();
@@ -57,7 +62,7 @@ namespace TestClient
             });
         }
 
-        private static int Benchmark(JsonRpcClient client, string[] testData)
+        private static int Benchmark(JsonRpcClient client, string[] testData, bool ws)
         {
             var statisticsList = new List<double>();
             Console.WriteLine("Starting benchmark");
@@ -69,19 +74,42 @@ namespace TestClient
                 var tasks = new Task[count];
                 var sw = Stopwatch.StartNew();
 
-                for (int i = 0; i < count; i += 5)
+                if (!ws)
                 {
-                    tasks[i] = Process(client, testData[0]);
-                    tasks[i + 1] = Process(client, testData[1]);
-                    tasks[i + 2] = Process(client, testData[2]);
-                    tasks[i + 3] = Process(client, testData[3]);
-                    tasks[i + 4] = Process(client, testData[4]);
+                    for (int i = 0; i < count; i += 5)
+                    {
+                        tasks[i] = Process(client, testData[0]);
+                        tasks[i + 1] = Process(client, testData[1]);
+                        tasks[i + 2] = Process(client, testData[2]);
+                        tasks[i + 3] = Process(client, testData[3]);
+                        tasks[i + 4] = Process(client, testData[4]);
+                    }
+
+                    Task.WaitAll(tasks);
+                    foreach (var task in tasks)
+                    {
+                        task.Dispose();
+                    }
                 }
-                Task.WaitAll(tasks);
-                foreach (var task in tasks)
+                else
                 {
-                    task.Dispose();
+                    count = 10;
+                    tasks = new Task[count];
+                    for (int i = 0; i < count; i += 5)
+                    {
+                       tasks[i] = Process(client, testData[0]);
+                       tasks[i+1] = Process(client, testData[1]);
+                       tasks[i+2] = Process(client, testData[2]);
+                       tasks[i+3] = Process(client, testData[3]);
+                       tasks[i+4] = Process(client, testData[4]);
+                    }
+                    Task.WaitAll(tasks);
+                    foreach (var task in tasks)
+                    {
+                        task.Dispose();
+                    }
                 }
+
                 sw.Stop();
                 if (sw.ElapsedMilliseconds != 0)
                 {
