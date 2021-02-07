@@ -7,11 +7,18 @@ using JsonRpcLite.Utilities;
 
 namespace JsonRpcLite.Rpc
 {
-    public class JsonRpcClient
+    public class JsonRpcClient:IDisposable,IAsyncDisposable
     {
         private uint _requestId;
 
         private IJsonRpcClientEngine _engine;
+        private bool _disposed;
+
+
+        ~JsonRpcClient()
+        {
+            Dispose();
+        }
 
         /// <summary>
         /// Use given engine to handle the request.
@@ -26,9 +33,10 @@ namespace JsonRpcLite.Rpc
         /// Create a proxy for given interface.
         /// </summary>
         /// <typeparam name="T">The interface type.</typeparam>
+        /// <param name="timeout">The timeout of the proxy.</param>
         /// <param name="serviceName">The name of the service.</param>
         /// <returns>The proxy which implement the given interface.</returns>
-        public T CreateProxy<T>(string serviceName = null)
+        public T CreateProxy<T>(int timeout = Timeout.Infinite, string serviceName = null)
         {
             var interfaceType = typeof(T);
             if (!interfaceType.IsInterface)
@@ -59,7 +67,7 @@ namespace JsonRpcLite.Rpc
                     }
                 }
             }
-            return JsonRpcClientProxy.CreateProxy<T>(name, this);
+            return JsonRpcClientProxy.CreateProxy<T>(name, this, timeout);
         }
 
         /// <summary>
@@ -69,14 +77,15 @@ namespace JsonRpcLite.Rpc
         /// <param name="serviceName">The name of the service</param>
         /// <param name="methodName">The method name to call.</param>
         /// <param name="args">The parameters of the method.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The result value.</returns>
-        public async Task<T> InvokeAsync<T>(string serviceName, string methodName, params object[] args)
+        public async Task<T> InvokeAsync<T>(string serviceName, string methodName, object[] args, CancellationToken cancellationToken = default)
         {
             var id = Interlocked.Increment(ref _requestId);
             var request = new JsonRpcRequest(id, methodName, new JsonRpcRequestParameter(RequestParameterType.Object, args));
-            var requestData = await JsonRpcCodec.EncodeRequestsAsync(new[] { request }).ConfigureAwait(false);
-            var responseData = await ProcessAsync(serviceName, requestData).ConfigureAwait(false);
-            var responses = await JsonRpcCodec.DecodeResponsesAsync(responseData).ConfigureAwait(false);
+            var requestData = await JsonRpcCodec.EncodeRequestsAsync(new[] { request }, cancellationToken).ConfigureAwait(false);
+            var responseData = await ProcessAsync(serviceName, requestData, cancellationToken).ConfigureAwait(false);
+            var responses = await JsonRpcCodec.DecodeResponsesAsync(responseData, cancellationToken).ConfigureAwait(false);
             if (responses.Length > 0)
             {
                 var response = responses[0];
@@ -92,7 +101,7 @@ namespace JsonRpcLite.Rpc
 
                 var resultString = (string)response.Result;
                 using var utf8StringData = Utf8StringData.Get(resultString);
-                return await JsonSerializer.DeserializeAsync<T>(utf8StringData.Stream,JsonRpcConvertSettings.SerializerOptions).ConfigureAwait(false);
+                return await JsonSerializer.DeserializeAsync<T>(utf8StringData.Stream,JsonRpcConvertSettings.SerializerOptions, cancellationToken).ConfigureAwait(false);
 
             }
 
@@ -105,15 +114,16 @@ namespace JsonRpcLite.Rpc
         /// </summary>
         /// <param name="serviceName">The name of the service</param>
         /// <param name="methodName">The method name to call.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <param name="args">The parameters of the method.</param>
         /// <returns>Void</returns>
-        public async Task VoidInvokeAsync(string serviceName, string methodName, params object[] args)
+        public async Task VoidInvokeAsync(string serviceName, string methodName, CancellationToken cancellationToken, params object[] args)
         {
             var id = Interlocked.Increment(ref _requestId);
             var request = new JsonRpcRequest(id, methodName, new JsonRpcRequestParameter(RequestParameterType.Object, args));
-            var requestData = await JsonRpcCodec.EncodeRequestsAsync(new[] { request }).ConfigureAwait(false);
-            var responseData = await ProcessAsync(serviceName, requestData).ConfigureAwait(false);
-            var responses = await JsonRpcCodec.DecodeResponsesAsync(responseData).ConfigureAwait(false);
+            var requestData = await JsonRpcCodec.EncodeRequestsAsync(new[] { request }, cancellationToken).ConfigureAwait(false);
+            var responseData = await ProcessAsync(serviceName, requestData, cancellationToken).ConfigureAwait(false);
+            var responses = await JsonRpcCodec.DecodeResponsesAsync(responseData, cancellationToken).ConfigureAwait(false);
             if (responses.Length > 0)
             {
                 var response = responses[0];
@@ -143,11 +153,12 @@ namespace JsonRpcLite.Rpc
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestString">The request string</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The response string.</returns>
-        public async Task<string> ProcessAsync(string serviceName, string requestString)
+        public async Task<string> ProcessAsync(string serviceName, string requestString, CancellationToken cancellationToken = default)
         {
             if (_engine == null) throw new NullReferenceException("The engine is null.");
-            return await _engine.ProcessAsync(serviceName, requestString);
+            return await _engine.ProcessAsync(serviceName, requestString, cancellationToken);
         }
 
         /// <summary>
@@ -155,11 +166,12 @@ namespace JsonRpcLite.Rpc
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestData">The request data</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The response data.</returns>
-        public async Task<byte[]> ProcessAsync(string serviceName, byte[] requestData)
+        public async Task<byte[]> ProcessAsync(string serviceName, byte[] requestData, CancellationToken cancellationToken = default)
         {
             if (_engine == null) throw new NullReferenceException("The engine is null.");
-            return await _engine.ProcessAsync(serviceName, requestData);
+            return await _engine.ProcessAsync(serviceName, requestData, cancellationToken);
         }
 
         /// <summary>
@@ -167,10 +179,11 @@ namespace JsonRpcLite.Rpc
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestString">The request string</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>Void</returns>
-        public async Task BenchmarkAsync(string serviceName, string requestString)
+        public async Task BenchmarkAsync(string serviceName, string requestString, CancellationToken cancellationToken = default)
         {
-            await ProcessAsync(serviceName, requestString).ConfigureAwait(false);
+            await ProcessAsync(serviceName, requestString, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -179,10 +192,37 @@ namespace JsonRpcLite.Rpc
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestData">The request data</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>Void</returns>
-        public async Task BenchmarkAsync(string serviceName, byte[] requestData)
+        public async Task BenchmarkAsync(string serviceName, byte[] requestData, CancellationToken cancellationToken = default)
         {
-            await ProcessAsync(serviceName, requestData).ConfigureAwait(false);
+            await ProcessAsync(serviceName, requestData, cancellationToken).ConfigureAwait(false);
+        }
+
+
+        /// <summary>
+        /// Close and release resource of the client.
+        /// </summary>
+        public void Dispose()
+        {
+            DisposeAsync().AsTask().Wait();
+        }
+
+        /// <summary>
+        /// Close and release resource of the client.
+        /// </summary>
+        /// <returns>Void</returns>
+        public async ValueTask DisposeAsync()
+        {
+            if (!_disposed)
+            {
+                if (_engine != null)
+                {
+                    await _engine.CloseAsync();
+                }
+                _disposed = true;
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

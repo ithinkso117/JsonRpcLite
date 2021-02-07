@@ -40,7 +40,8 @@ namespace JsonRpcLite.Network
         /// <param name="requestPath">The request path from the http request.</param>
         /// <param name="router">The router to handle the request data.</param>
         /// <param name="socket">The connected websocket.</param>
-        protected async Task HandleRequestAsync(string requestPath, IJsonRpcRouter router, WebSocket socket)
+        /// <param name="cancellationToken">The cancellation token which can cancel this method</param>
+        protected async Task HandleWebSocketAsync(string requestPath, IJsonRpcRouter router, WebSocket socket, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -56,20 +57,21 @@ namespace JsonRpcLite.Network
                 // While the WebSocket connection remains open run a simple loop that receives data and sends it back.
                 while (socket.State == WebSocketState.Open)
                 {
-                    receiveBuffer ??= ArrayPool<byte>.Shared.Rent(128);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    receiveBuffer ??= ArrayPool<byte>.Shared.Rent(1024);
                     inputStream ??= new MemoryStream();
-                    var receiveResult = await socket.ReceiveAsync(receiveBuffer, CancellationToken.None).ConfigureAwait(false);
+                    var receiveResult = await socket.ReceiveAsync(receiveBuffer, cancellationToken).ConfigureAwait(false);
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None).ConfigureAwait(false);
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", cancellationToken).ConfigureAwait(false);
                     }
                     else if (receiveResult.MessageType == WebSocketMessageType.Text)
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Cannot accept text frame", CancellationToken.None).ConfigureAwait(false);
+                        await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Cannot accept text frame", cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
-                        await inputStream.WriteAsync(receiveBuffer, 0, receiveResult.Count).ConfigureAwait(false);
+                        await inputStream.WriteAsync(receiveBuffer, 0, receiveResult.Count, cancellationToken).ConfigureAwait(false);
                         //handle stream
                         if (receiveResult.EndOfMessage)
                         {
@@ -86,10 +88,10 @@ namespace JsonRpcLite.Network
                                 Logger.WriteDebug($"Receive request data: {requestString}");
                             }
 
-                            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestData).ConfigureAwait(false);
-                            var responses = await router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
-                            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses).ConfigureAwait(false);
-                            await socket.SendAsync(responseData, WebSocketMessageType.Binary, true, CancellationToken.None).ConfigureAwait(false);
+                            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestData, cancellationToken).ConfigureAwait(false);
+                            var responses = await router.DispatchRequestsAsync(serviceName, requests, cancellationToken).ConfigureAwait(false);
+                            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses, cancellationToken).ConfigureAwait(false);
+                            await socket.SendAsync(responseData, WebSocketMessageType.Binary, true, cancellationToken).ConfigureAwait(false);
 
                             if (Logger.DebugMode)
                             {
@@ -110,18 +112,6 @@ namespace JsonRpcLite.Network
                 socket.Dispose();
                 Logger.WriteVerbose("Remote websocket closed.");
             }
-        }
-
-
-        /// <summary>
-        /// Process data from websocket and return result data to remote client.
-        /// </summary>
-        /// <param name="requestPath">The request path from the http request.</param>
-        /// <param name="router">The router to handle the request data.</param>
-        /// <param name="socket">The connected websocket.</param>
-        protected async void ProcessRequestAsync(string requestPath, IJsonRpcRouter router, WebSocket socket)
-        {
-            await HandleRequestAsync(requestPath, router, socket).ConfigureAwait(false);
         }
 
 

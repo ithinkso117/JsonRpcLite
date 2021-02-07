@@ -82,7 +82,7 @@ namespace JsonRpcLite.Network
         private async void HandleContextAsync(HttpListenerContext context)
         {
             var jsonRpcHttpContext = new JsonRpcHttpListenerContext(context);
-            await HandleRequestAsync(jsonRpcHttpContext, _router);
+            await HandleContextAsync(jsonRpcHttpContext, _router);
         }
     }
 }

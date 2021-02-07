@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace JsonRpcLite.Services
 {
@@ -23,7 +24,8 @@ namespace JsonRpcLite.Services
         /// </summary>
         /// <param name="serviceName">The service name to dispatch.</param>
         /// <param name="requests">The requests to handle.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>The handled response.</returns>
-        Task<JsonRpcResponse[]> DispatchRequestsAsync(string serviceName, JsonRpcRequest[] requests);
+        Task<JsonRpcResponse[]> DispatchRequestsAsync(string serviceName, JsonRpcRequest[] requests, CancellationToken cancellationToken = default);
     }
 }

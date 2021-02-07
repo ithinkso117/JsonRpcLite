@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.Log;
 using JsonRpcLite.Rpc;
@@ -47,8 +48,9 @@ namespace JsonRpcLite.InProcess
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestString">The request string</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The response string.</returns>
-        public async Task<string> ProcessAsync(string serviceName, string requestString)
+        public async Task<string> ProcessAsync(string serviceName, string requestString, CancellationToken cancellationToken)
         {
             if (_router == null) throw new NullReferenceException("The router is null");
             if (Logger.DebugMode)
@@ -57,9 +59,9 @@ namespace JsonRpcLite.InProcess
             }
             using var utf8StringData = Utf8StringData.Get(requestString);
             var requestStream = utf8StringData.Stream;
-            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestStream).ConfigureAwait(false);
-            var responses = await _router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
-            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses).ConfigureAwait(false);
+            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestStream, cancellationToken).ConfigureAwait(false);
+            var responses = await _router.DispatchRequestsAsync(serviceName, requests, cancellationToken).ConfigureAwait(false);
+            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses, cancellationToken).ConfigureAwait(false);
             var responseString = Encoding.UTF8.GetString(responseData);
             if (Logger.DebugMode)
             {
@@ -73,8 +75,9 @@ namespace JsonRpcLite.InProcess
         /// </summary>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="requestData">The request data</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The response data.</returns>
-        public async Task<byte[]> ProcessAsync(string serviceName, byte[] requestData)
+        public async Task<byte[]> ProcessAsync(string serviceName, byte[] requestData, CancellationToken cancellationToken)
         {
             if (_router == null) throw new NullReferenceException("The router is null");
             if (Logger.DebugMode)
@@ -84,15 +87,25 @@ namespace JsonRpcLite.InProcess
             }
 
             await using var requestStream = new MemoryStream(requestData);
-            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestStream).ConfigureAwait(false);
-            var responses = await _router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
-            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses).ConfigureAwait(false);
+            var requests = await JsonRpcCodec.DecodeRequestsAsync(requestStream, cancellationToken).ConfigureAwait(false);
+            var responses = await _router.DispatchRequestsAsync(serviceName, requests, cancellationToken).ConfigureAwait(false);
+            var responseData = await JsonRpcCodec.EncodeResponsesAsync(responses, cancellationToken).ConfigureAwait(false);
             if (Logger.DebugMode)
             {
                 var responseString = Encoding.UTF8.GetString(responseData);
                 Logger.WriteDebug($"Response data sent:{responseString}");
             }
             return responseData;
+        }
+
+
+        /// <summary>
+        /// Close the engine.
+        /// </summary>
+        /// <returns>Void</returns>
+        public async Task CloseAsync()
+        {
+            await Task.Delay(1);
         }
     }
 }

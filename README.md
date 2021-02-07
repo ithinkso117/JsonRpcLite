@@ -7,11 +7,12 @@ This is a simple JsonRpc server implementation written in C#, it's simple, but f
 ## Features
 - [x] High performance, faster than JSON-RPC.NET.
 - [x] Lightweight design, only one dll file.
-- [x] Build-in http server, support http and in-process.
+- [x] Build-in http server, support http, websocket and in-process.
+- [x] Support use Kestrel to provide services on http and websocket.
 - [x] Attributes support, support customize service name and method name.
 - [x] SMD support.
-- [ ] Code generator for generate client code(C#, dart, javascript...).
-- [ ] Interface based mode for C# development.
+- [x] Interface based mode for C# development.
+
 
 ## Performance
 
@@ -44,8 +45,8 @@ processed 252,000 rpc in         640ms for       393,750.00 rpc/sec
 Finished benchmark...
 ```
 
-#### Usage
-## For server
+## Usage
+##### Define the service
 ```csharp
     public interface ITestService
     {
@@ -66,7 +67,10 @@ Finished benchmark...
           ...
         }
     }
+```
 
+##### For server
+```csharp
    //In server
    var server = new JsonRpcServer();
    server.RegisterService<ITestService>(new TestService());
@@ -75,7 +79,7 @@ Finished benchmark...
    server.Start();
 ```
 
-## For clinet
+##### For clinet
 ```csharp
   //In client
   var client = new JsonRpcClient();

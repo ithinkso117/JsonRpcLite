@@ -45,7 +45,7 @@ namespace JsonRpcLite.Kestrel
                 .Configure(app =>
                 {
                     app.UseWebSockets();
-                    app.Run(HandleRequestAsync);
+                    app.Run(HandleHttpContextAsync);
                 });
             _host = builder.Build();
             await _host.RunAsync().ConfigureAwait(false);
@@ -56,13 +56,13 @@ namespace JsonRpcLite.Kestrel
         /// </summary>
         /// <param name="context">The context to handle.</param>
         /// <returns>Void</returns>
-        private async Task HandleRequestAsync(HttpContext context)
+        private async Task HandleHttpContextAsync(HttpContext context)
         {
             if (context.WebSockets.IsWebSocketRequest)
             {
                 var requestPath = context.Request.Path;
                 var socket = await context.WebSockets.AcceptWebSocketAsync("JsonRpcLite").ConfigureAwait(false);
-                await HandleRequestAsync(requestPath, _router, socket).ConfigureAwait(false);
+                await HandleWebSocketAsync(requestPath, _router, socket).ConfigureAwait(false);
             }
             else
             {

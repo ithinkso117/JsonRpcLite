@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.Services;
 
@@ -10,18 +11,22 @@ namespace JsonRpcLite.Rpc
 {
     public abstract class JsonRpcClientProxy
     {
+
         private static readonly Dictionary<Type, Type> TypeCache = new();
 
+        private readonly int _timeout;
         private readonly string _serviceName;
         private readonly JsonRpcClient _client;
 
-        protected JsonRpcClientProxy()
+
+        private JsonRpcClientProxy()
         {
 
         }
 
-        protected JsonRpcClientProxy(string serviceName, JsonRpcClient client)
+        protected JsonRpcClientProxy(string serviceName, JsonRpcClient client, int timeout)
         {
+            _timeout = timeout;
             _serviceName = serviceName;
             _client = client;
         }
@@ -32,8 +37,9 @@ namespace JsonRpcLite.Rpc
         /// <typeparam name="T">The interface type.</typeparam>
         /// <param name="serviceName">The name of the service.</param>
         /// <param name="client">The JsonRpcClient which will be used by the proxy.</param>
+        /// <param name="timeout">The timeout of the proxy</param>
         /// <returns>The proxy which implement the given interface.</returns>
-        internal static T CreateProxy<T>(string serviceName, JsonRpcClient client)
+        internal static T CreateProxy<T>(string serviceName, JsonRpcClient client, int timeout = Timeout.Infinite)
         {
             var interfaceType = typeof(T);
             if (!interfaceType.IsInterface)
@@ -68,7 +74,7 @@ namespace JsonRpcLite.Rpc
                 TypeCache.Add(interfaceType,proxyType);
             }
 
-            var proxy = Activator.CreateInstance(proxyType, serviceName, client);
+            var proxy = Activator.CreateInstance(proxyType, serviceName, client, timeout);
             return (T)proxy;
         }
 
@@ -82,7 +88,7 @@ namespace JsonRpcLite.Rpc
             var baseConstructor = typeof(JsonRpcClientProxy).GetConstructor(
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
-                new[] { typeof(string), typeof(JsonRpcClient) },
+                new[] { typeof(string), typeof(JsonRpcClient), typeof(int) },
                 null
             );
             if (baseConstructor == null)
@@ -101,6 +107,7 @@ namespace JsonRpcLite.Rpc
             constructorIll.Emit(OpCodes.Ldarg_0);
             constructorIll.Emit(OpCodes.Ldarg_1);
             constructorIll.Emit(OpCodes.Ldarg_2);
+            constructorIll.Emit(OpCodes.Ldarg_3);
             constructorIll.Emit(OpCodes.Call, baseConstructor);
             constructorIll.Emit(OpCodes.Ret);
         }
@@ -280,9 +287,14 @@ namespace JsonRpcLite.Rpc
         /// <param name="methodName">The method name to call.</param>
         /// <param name="args">The parameters of the method.</param>
         /// <returns>The result value.</returns>
-        protected async Task<T> InvokeAsync<T>(string methodName, params object[] args)
+        protected async Task<T> InvokeAsync<T>(string methodName, object[] args)
         {
-            return await _client.InvokeAsync<T>(_serviceName, methodName, args);
+            if (_timeout == Timeout.Infinite)
+            {
+                return await _client.InvokeAsync<T>(_serviceName, methodName, args, CancellationToken.None);
+            }
+            using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+            return await _client.InvokeAsync<T>(_serviceName, methodName, args, cancellationTokenSource.Token);
         }
 
 
@@ -293,7 +305,14 @@ namespace JsonRpcLite.Rpc
         /// <param name="args">The parameters of the method.</param>
         protected void VoidInvoke(string methodName, params object[] args)
         {
-            VoidInvokeAsync(methodName, args).Wait();
+            if (_timeout == Timeout.Infinite)
+            {
+                VoidInvokeAsync(methodName, args).Wait();
+            }
+            else
+            {
+                VoidInvokeAsync(methodName, args).Wait(_timeout);
+            }
         }
 
         /// <summary>
@@ -304,7 +323,15 @@ namespace JsonRpcLite.Rpc
         /// <returns>Void</returns>
         protected async Task VoidInvokeAsync(string methodName, params object[] args)
         {
-            await _client.VoidInvokeAsync(_serviceName, methodName, args);
+            if (_timeout == Timeout.Infinite)
+            {
+                await _client.VoidInvokeAsync(_serviceName, methodName, CancellationToken.None, args);
+            }
+            else
+            {
+                using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(_timeout));
+                await _client.VoidInvokeAsync(_serviceName, methodName, cancellationTokenSource.Token, args);
+            }
         }
     }
 }

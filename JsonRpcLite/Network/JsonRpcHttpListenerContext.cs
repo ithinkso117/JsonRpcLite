@@ -1,7 +1,5 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Net;
-using JsonRpcLite.Log;
 
 namespace JsonRpcLite.Network
 {

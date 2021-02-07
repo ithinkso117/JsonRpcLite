@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.Log;
 using JsonRpcLite.Rpc;
@@ -42,13 +43,15 @@ namespace JsonRpcLite.Network
         /// <param name="inputStream">The stream to handle.</param>
         /// <param name="requestData">The request data to fill.</param>
         /// <param name="dataLength">The data length to read.</param>
-        private async Task ReadRequestDataAsync(Stream inputStream, byte[] requestData, int dataLength)
+        /// <param name="cancellationToken"></param>
+        private async Task ReadRequestDataAsync(Stream inputStream, byte[] requestData, int dataLength, CancellationToken cancellationToken = default)
         {
             var length = dataLength;
             var offset = 0;
             while (length > 0)
             {
-                var readLength = await inputStream.ReadAsync(requestData, offset, length).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                var readLength = await inputStream.ReadAsync(requestData, offset, length, cancellationToken).ConfigureAwait(false);
                 length -= readLength;
                 offset += readLength;
             }
@@ -61,8 +64,9 @@ namespace JsonRpcLite.Network
         /// <param name="context">The HttpListenerContext</param>
         /// <param name="router">The router to handle the rpc request</param>
         /// <param name="serviceName">The name of the service</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method</param>
         /// <returns>Void</returns>
-        private async Task DispatchAsync(IJsonRpcHttpContext context, IJsonRpcRouter router, string serviceName)
+        private async Task DispatchAsync(IJsonRpcHttpContext context, IJsonRpcRouter router, string serviceName, CancellationToken cancellationToken = default)
         {
             var dataLength = (int)context.GetRequestContentLength();
             var requestData = ArrayPool<byte>.Shared.Rent(dataLength);
@@ -70,14 +74,14 @@ namespace JsonRpcLite.Network
             try
             {
                 var inputStream = context.GetInputStream();
-                await ReadRequestDataAsync(inputStream, requestData, dataLength).ConfigureAwait(false);
+                await ReadRequestDataAsync(inputStream, requestData, dataLength, cancellationToken).ConfigureAwait(false);
                 if (Logger.DebugMode)
                 {
                     var requestString = Encoding.UTF8.GetString(requestData);
                     Logger.WriteDebug($"Receive request data:{requestString}");
                 }
 
-                requests = await JsonRpcCodec.DecodeRequestsAsync(requestData, dataLength).ConfigureAwait(false);
+                requests = await JsonRpcCodec.DecodeRequestsAsync(requestData, cancellationToken, dataLength).ConfigureAwait(false);
 
             }
             finally
@@ -85,8 +89,8 @@ namespace JsonRpcLite.Network
                 ArrayPool<byte>.Shared.Return(requestData);
             }
 
-            var responses = await router.DispatchRequestsAsync(serviceName, requests).ConfigureAwait(false);
-            await WriteRpcResponsesAsync(context, responses).ConfigureAwait(false);
+            var responses = await router.DispatchRequestsAsync(serviceName, requests, cancellationToken).ConfigureAwait(false);
+            await WriteRpcResponsesAsync(context, responses, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -104,18 +108,18 @@ namespace JsonRpcLite.Network
         }
 
 
-
         /// <summary>
         /// Write smd data back to the client.
         /// </summary>
         /// <param name="context">The http context</param>
         /// <param name="smdData">The smd data to write back.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>Void</returns>
-        private async Task WriteSmdDataAsync(IJsonRpcHttpContext context, byte[] smdData)
+        private async Task WriteSmdDataAsync(IJsonRpcHttpContext context, byte[] smdData, CancellationToken cancellationToken = default)
         {
             try
             {
-                await WriteRpcResultAsync(context, smdData).ConfigureAwait(false);
+                await WriteRpcResultAsync(context, smdData, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -129,12 +133,13 @@ namespace JsonRpcLite.Network
         /// </summary>
         /// <param name="context">The http context</param>
         /// <param name="exception">The exception to write back.</param>
+        /// <param name="cancellationToken">The cancel token which will cancel this method.</param>
         /// <returns>Void</returns>
-        private async Task WriteHttpExceptionAsync(IJsonRpcHttpContext context, HttpException exception)
+        private async Task WriteHttpExceptionAsync(IJsonRpcHttpContext context, HttpException exception, CancellationToken cancellationToken = default)
         {
             try
             {
-                await WriteHttpResultAsync(context, exception.ErrorCode, exception.Message).ConfigureAwait(false);
+                await WriteHttpResultAsync(context, exception.ErrorCode, exception.Message, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -148,13 +153,14 @@ namespace JsonRpcLite.Network
         /// </summary>
         /// <param name="context">The http context</param>
         /// <param name="responses">The responses to write back.</param>
+        /// <param name="cancellationToken">The cancel token which will cancel this method.</param>
         /// <returns>Void</returns>
-        private async Task WriteRpcResponsesAsync(IJsonRpcHttpContext context, JsonRpcResponse[] responses)
+        private async Task WriteRpcResponsesAsync(IJsonRpcHttpContext context, JsonRpcResponse[] responses, CancellationToken cancellationToken = default)
         {
             try
             {
-                var resultData = await JsonRpcCodec.EncodeResponsesAsync(responses).ConfigureAwait(false);
-                await WriteRpcResultAsync(context, resultData).ConfigureAwait(false);
+                var resultData = await JsonRpcCodec.EncodeResponsesAsync(responses, cancellationToken).ConfigureAwait(false);
+                await WriteRpcResultAsync(context, resultData, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -163,14 +169,14 @@ namespace JsonRpcLite.Network
         }
 
 
-
         /// <summary>
         /// Get the compressed(or not) output data according to request.
         /// </summary>
         /// <param name="context">The http context.</param>
         /// <param name="data">The data to output.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>The compressed or not output data.</returns>
-        private async Task<byte[]> GetOutputDataAsync(IJsonRpcHttpContext context, byte[] data)
+        private async Task<byte[]> GetOutputDataAsync(IJsonRpcHttpContext context, byte[] data, CancellationToken cancellationToken = default)
         {
             var outputData = data;
             var acceptEncoding = context.GetRequestHeader("Accept-Encoding");
@@ -179,8 +185,8 @@ namespace JsonRpcLite.Network
                 context.SetResponseHeader("Content-Encoding", "gzip");
                 await using var memoryStream = new MemoryStream();
                 await using var outputStream = new GZipStream(memoryStream, CompressionMode.Compress);
-                await outputStream.WriteAsync(outputData).ConfigureAwait(false);
-                await outputStream.FlushAsync().ConfigureAwait(false);
+                await outputStream.WriteAsync(outputData, cancellationToken).ConfigureAwait(false);
+                await outputStream.FlushAsync(cancellationToken).ConfigureAwait(false);
                 outputData = memoryStream.ToArray();
             }
             else if (acceptEncoding != null && acceptEncoding.Contains("deflate"))
@@ -188,8 +194,8 @@ namespace JsonRpcLite.Network
                 context.SetResponseHeader("Content-Encoding", "deflate");
                 await using var memoryStream = new MemoryStream();
                 await using var outputStream = new DeflateStream(memoryStream, CompressionMode.Compress);
-                await outputStream.WriteAsync(outputData).ConfigureAwait(false);
-                await outputStream.FlushAsync().ConfigureAwait(false);
+                await outputStream.WriteAsync(outputData, cancellationToken).ConfigureAwait(false);
+                await outputStream.FlushAsync(cancellationToken).ConfigureAwait(false);
                 outputData = memoryStream.ToArray();
             }
             return outputData;
@@ -202,18 +208,19 @@ namespace JsonRpcLite.Network
         /// <param name="context">The  http context.</param>
         /// <param name="statusCode">The status code to return</param>
         /// <param name="message">The message to write back.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>Void</returns>
-        private async Task WriteHttpResultAsync(IJsonRpcHttpContext context, int statusCode, string message)
+        private async Task WriteHttpResultAsync(IJsonRpcHttpContext context, int statusCode, string message, CancellationToken cancellationToken = default)
         {
             context.SetResponseHeader("Server", "JsonRpcLite");
             context.SetResponseHeader("Access-Control-Allow-Origin", "*");
             context.SetResponseStatusCode(statusCode);
             context.SetResponseContentType("text/html");
-            var outputData = await GetOutputDataAsync(context, Encoding.UTF8.GetBytes(message)).ConfigureAwait(false);
+            var outputData = await GetOutputDataAsync(context, Encoding.UTF8.GetBytes(message), cancellationToken).ConfigureAwait(false);
             context.SetResponseContentLength(outputData.Length);
             var outputStream = context.GetOutputStream();
-            await outputStream.WriteAsync(outputData).ConfigureAwait(false);
-            await outputStream.FlushAsync();
+            await outputStream.WriteAsync(outputData, cancellationToken).ConfigureAwait(false);
+            await outputStream.FlushAsync(cancellationToken);
             if (Logger.DebugMode)
             {
                 Logger.WriteDebug($"Response data sent:{message}");
@@ -226,8 +233,9 @@ namespace JsonRpcLite.Network
         /// </summary>
         /// <param name="context">The context of the http.</param>
         /// <param name="result">The result data to write</param>
+        /// <param name="cancellationToken">The cancellation which can cancel this method</param>
         /// <returns>Void</returns>
-        private async Task WriteRpcResultAsync(IJsonRpcHttpContext context, byte[] result = null)
+        private async Task WriteRpcResultAsync(IJsonRpcHttpContext context, byte[] result, CancellationToken cancellationToken = default)
         {
             context.SetResponseHeader("Server", "JsonRpcLite");
             context.SetResponseHeader("Access-Control-Allow-Origin", "*");
@@ -235,11 +243,11 @@ namespace JsonRpcLite.Network
             context.SetResponseContentType("application/json");
             if (result != null)
             {
-                var outputData = await GetOutputDataAsync(context, result).ConfigureAwait(false);
+                var outputData = await GetOutputDataAsync(context, result, cancellationToken).ConfigureAwait(false);
                 context.SetResponseContentLength(outputData.Length);
                 var outputStream = context.GetOutputStream();
-                await outputStream.WriteAsync(outputData).ConfigureAwait(false);
-                await outputStream.FlushAsync();
+                await outputStream.WriteAsync(outputData, cancellationToken).ConfigureAwait(false);
+                await outputStream.FlushAsync(cancellationToken);
             }
             if (Logger.DebugMode)
             {
@@ -257,8 +265,9 @@ namespace JsonRpcLite.Network
         /// </summary>
         /// <param name="context">The http context to handle.</param>
         /// <param name="router">The router to dispatch the request data.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>Void</returns>
-        protected async Task HandleRequestAsync(IJsonRpcHttpContext context, IJsonRpcRouter router)
+        protected async Task HandleContextAsync(IJsonRpcHttpContext context, IJsonRpcRouter router, CancellationToken cancellationToken = default)
         {
             var httpMethod = context.GetRequestHttpMethod();
             var requestPath = context.GetRequestPath();
@@ -285,8 +294,7 @@ namespace JsonRpcLite.Network
                     if (!router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {requestPath} not found.");
-                        throw new HttpException((int) HttpStatusCode.ServiceUnavailable,
-                            $"Service [{serviceName}] does not exist.");
+                        throw new HttpException((int) HttpStatusCode.ServiceUnavailable,$"Service [{serviceName}] does not exist.");
                     }
 
                     if (SmdEnabled && smdRequest)
@@ -294,7 +302,7 @@ namespace JsonRpcLite.Network
                         try
                         {
                             var smdData = await router.GetServiceSmdData(serviceName);
-                            await WriteSmdDataAsync(context, smdData).ConfigureAwait(false);
+                            await WriteSmdDataAsync(context, smdData, cancellationToken).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
@@ -303,8 +311,7 @@ namespace JsonRpcLite.Network
                     }
                     else
                     {
-                        throw new HttpException((int) HttpStatusCode.NotFound,
-                            $"Resource for {requestPath} does not exist.");
+                        throw new HttpException((int) HttpStatusCode.NotFound,$"Resource for {requestPath} does not exist.");
                     }
                 }
                 else if (httpMethod == "post")
@@ -312,13 +319,12 @@ namespace JsonRpcLite.Network
                     if (!router.ServiceExists(serviceName))
                     {
                         Logger.WriteWarning($"Service for request: {requestPath} not found.");
-                        throw new ServerErrorException("Service does not exist.",
-                            $"Service [{serviceName}] does not exist.");
+                        throw new ServerErrorException("Service does not exist.",$"Service [{serviceName}] does not exist.");
                     }
 
                     try
                     {
-                        await DispatchAsync(context, router, serviceName).ConfigureAwait(false);
+                        await DispatchAsync(context, router, serviceName, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -341,7 +347,7 @@ namespace JsonRpcLite.Network
                 Logger.WriteError($"Handle request {requestPath} error: {ex.Message}");
                 if (ex is HttpException httpException)
                 {
-                    await WriteHttpExceptionAsync(context, httpException).ConfigureAwait(false);
+                    await WriteHttpExceptionAsync(context, httpException, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -357,7 +363,7 @@ namespace JsonRpcLite.Network
                         response.WriteResult(serverError);
                     }
 
-                    await WriteRpcResponsesAsync(context, new[] {response}).ConfigureAwait(false);
+                    await WriteRpcResponsesAsync(context, new[] {response}, cancellationToken).ConfigureAwait(false);
                 }
             }
             finally

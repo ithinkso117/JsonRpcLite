@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JsonRpcLite.Utilities
@@ -68,9 +69,10 @@ namespace JsonRpcLite.Utilities
         /// Convert binary data to JsonRpcRequest array.
         /// </summary>
         /// <param name="requestData">The data to be converted.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <param name="dataLength">The available data length of the request data. if 0 use all data.</param>
         /// <returns>The JsonRpcRequest array converted from request data.</returns>
-        public static async Task<JsonRpcRequest[]> DecodeRequestsAsync(byte[] requestData, int dataLength = 0)
+        public static async Task<JsonRpcRequest[]> DecodeRequestsAsync(byte[] requestData, CancellationToken cancellationToken, int dataLength = 0)
         {
             await using var memoryStream = dataLength == 0
                 ? new MemoryStream(requestData)
@@ -80,7 +82,7 @@ namespace JsonRpcLite.Utilities
             {
                 try
                 {
-                    doc = await JsonDocument.ParseAsync(memoryStream, JsonRpcConvertSettings.DocumentOptions).ConfigureAwait(false);
+                    doc = await JsonDocument.ParseAsync(memoryStream, JsonRpcConvertSettings.DocumentOptions, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -105,15 +107,16 @@ namespace JsonRpcLite.Utilities
         /// Convert binary data to JsonRpcHttpRequest array.
         /// </summary>
         /// <param name="stream">The stream contains request data to be converted.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The JsonRpcHttpRequest array converted from request data.</returns>
-        public static async Task<JsonRpcRequest[]> DecodeRequestsAsync(Stream stream)
+        public static async Task<JsonRpcRequest[]> DecodeRequestsAsync(Stream stream, CancellationToken cancellationToken)
         {
             JsonDocument doc = null;
             try
             {
                 try
                 {
-                    doc = await JsonDocument.ParseAsync(stream, JsonRpcConvertSettings.DocumentOptions).ConfigureAwait(false);
+                    doc = await JsonDocument.ParseAsync(stream, JsonRpcConvertSettings.DocumentOptions, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -196,9 +199,10 @@ namespace JsonRpcLite.Utilities
         /// Convert binary data to JsonRpcResponse array.
         /// </summary>
         /// <param name="responseData">The data to be converted.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <param name="dataLength">The available data length of the response data. if 0 use all data.</param>
         /// <returns>The JsonRpcResponse array converted from response data.</returns>
-        public static async Task<JsonRpcResponse[]> DecodeResponsesAsync(byte[] responseData, int dataLength = 0)
+        public static async Task<JsonRpcResponse[]> DecodeResponsesAsync(byte[] responseData, CancellationToken cancellationToken, int dataLength = 0)
         {
             await using var memoryStream = dataLength == 0
                 ? new MemoryStream(responseData)
@@ -208,7 +212,7 @@ namespace JsonRpcLite.Utilities
             {
                 try
                 {
-                    doc = await JsonDocument.ParseAsync(memoryStream, JsonRpcConvertSettings.DocumentOptions).ConfigureAwait(false);
+                    doc = await JsonDocument.ParseAsync(memoryStream, JsonRpcConvertSettings.DocumentOptions, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -234,15 +238,16 @@ namespace JsonRpcLite.Utilities
         /// Convert stream to JsonRpcResponse array.
         /// </summary>
         /// <param name="stream">The stream to be converted.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>The JsonRpcResponse array converted from stream.</returns>
-        public static async Task<JsonRpcResponse[]> DecodeResponsesAsync(Stream stream)
+        public static async Task<JsonRpcResponse[]> DecodeResponsesAsync(Stream stream, CancellationToken cancellationToken)
         {
             JsonDocument doc = null;
             try
             {
                 try
                 {
-                    doc = await JsonDocument.ParseAsync(stream, JsonRpcConvertSettings.DocumentOptions).ConfigureAwait(false);
+                    doc = await JsonDocument.ParseAsync(stream, JsonRpcConvertSettings.DocumentOptions, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -264,14 +269,14 @@ namespace JsonRpcLite.Utilities
         }
 
 
-
         /// <summary>
         /// Convert param json string to JsonRpcArguments.
         /// </summary>
         /// <param name="paramString">The parameter(s)'s json string to be converted.</param>
         /// <param name="parameters">The parameters of the calling method.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>The converted arguments.</returns>
-        public static async Task<object[]> DecodeArgumentsAsync(string paramString, IReadOnlyList<JsonRpcCallParameter> parameters)
+        public static async Task<object[]> DecodeArgumentsAsync(string paramString, IReadOnlyList<JsonRpcCallParameter> parameters, CancellationToken cancellationToken)
         {
             if (parameters.Count == 0)
             {
@@ -279,7 +284,7 @@ namespace JsonRpcLite.Utilities
             }
 
             using var parameterData = Utf8StringData.Get(paramString);//new Utf8StringData(paramString);
-            using var paramDoc = await JsonDocument.ParseAsync(parameterData.Stream, JsonRpcConvertSettings.DocumentOptions);
+            using var paramDoc = await JsonDocument.ParseAsync(parameterData.Stream, JsonRpcConvertSettings.DocumentOptions, cancellationToken);
             if (parameters.Count == 1)
             {
                 // paramString is an object
@@ -289,7 +294,7 @@ namespace JsonRpcLite.Utilities
                 {
                     var parameterElement = paramDoc.RootElement.ValueKind == JsonValueKind.Array ? paramDoc.RootElement[0] : paramDoc.RootElement;
                     using var paramValueData = Utf8StringData.Get(parameterElement.GetRawText());//new Utf8StringData(parameterElement.GetRawText());
-                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions);
+                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -305,12 +310,13 @@ namespace JsonRpcLite.Utilities
             var index = 0;
             foreach (var parameterElement in parameterElements)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var parameter = parameters[index];
                 object parameterValue;
                 try
                 {
                     using var paramValueData = Utf8StringData.Get(parameterElement.GetRawText());//new Utf8StringData(parameterElement.GetRawText());
-                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions);
+                    parameterValue = await JsonSerializer.DeserializeAsync(paramValueData.Stream, parameter.ParameterType, JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -328,8 +334,9 @@ namespace JsonRpcLite.Utilities
         /// Convert requests to binary data which in Json format.
         /// </summary>
         /// <param name="requests">The requests to convert.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method</param>
         /// <returns>The converted binary data which in Json format.</returns>
-        public static async Task<byte[]> EncodeRequestsAsync(JsonRpcRequest[] requests)
+        public static async Task<byte[]> EncodeRequestsAsync(JsonRpcRequest[] requests, CancellationToken cancellationToken)
         {
             await using var stream = new MemoryStream();
             switch (requests.Length)
@@ -350,7 +357,7 @@ namespace JsonRpcLite.Utilities
                             if (request.Params.Type == RequestParameterType.RawString)
                             {
                                 using var utf8StringData = Utf8StringData.Get((string) request.Params.Value);
-                                doc = await JsonDocument.ParseAsync(utf8StringData.Stream,JsonRpcConvertSettings.DocumentOptions);
+                                doc = await JsonDocument.ParseAsync(utf8StringData.Stream,JsonRpcConvertSettings.DocumentOptions, cancellationToken);
                                 rentData.Params = doc.RootElement;
                             }
                             else
@@ -358,7 +365,7 @@ namespace JsonRpcLite.Utilities
                                 rentData.Params = request.Params.Value;
                             }
 
-                            await JsonSerializer.SerializeAsync(stream, rentData.GetData(),JsonRpcConvertSettings.SerializerOptions);
+                            await JsonSerializer.SerializeAsync(stream, rentData.GetData(),JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                         }
                         finally
                         {
@@ -389,7 +396,7 @@ namespace JsonRpcLite.Utilities
                                     if (request.Params.Type == RequestParameterType.RawString)
                                     {
                                         using var utf8StringData = Utf8StringData.Get((string) request.Params.Value);
-                                        var doc = await JsonDocument.ParseAsync(utf8StringData.Stream,JsonRpcConvertSettings.DocumentOptions);
+                                        var doc = await JsonDocument.ParseAsync(utf8StringData.Stream,JsonRpcConvertSettings.DocumentOptions, cancellationToken);
                                         rentData.Params = doc.RootElement;
                                         jsonDocumentList.Add(doc);
                                     }
@@ -401,7 +408,7 @@ namespace JsonRpcLite.Utilities
                                     rentDataArray[i] = rentData;
                                 }
 
-                                await JsonSerializer.SerializeAsync(stream, requestDataArray,JsonRpcConvertSettings.SerializerOptions);
+                                await JsonSerializer.SerializeAsync(stream, requestDataArray,JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                             }
                             finally
                             {
@@ -430,8 +437,9 @@ namespace JsonRpcLite.Utilities
         /// Convert responses to binary data which in Json format.
         /// </summary>
         /// <param name="responses">The responses to convert.</param>
+        /// <param name="cancellationToken">The cancellation token which will cancel this method.</param>
         /// <returns>The converted binary data which in Json format.</returns>
-        public static async Task<byte[]> EncodeResponsesAsync(JsonRpcResponse[] responses)
+        public static async Task<byte[]> EncodeResponsesAsync(JsonRpcResponse[] responses, CancellationToken cancellationToken)
         {
             await using var stream = new MemoryStream();
             switch (responses.Length)
@@ -446,7 +454,7 @@ namespace JsonRpcLite.Utilities
                         var response = responses[0];
                         rentData.Id = response.Id;
                         rentData.Data = response.Result;
-                        await JsonSerializer.SerializeAsync(stream, rentData.GetData(),JsonRpcConvertSettings.SerializerOptions);
+                        await JsonSerializer.SerializeAsync(stream, rentData.GetData(),JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                     }
                     finally
                     {
@@ -470,7 +478,7 @@ namespace JsonRpcLite.Utilities
                             responseDataArray[i] = responseData.GetData();
                             rentDataArray[i] = responseData;
                         }
-                        await JsonSerializer.SerializeAsync(stream, responseDataArray, JsonRpcConvertSettings.SerializerOptions);
+                        await JsonSerializer.SerializeAsync(stream, responseDataArray, JsonRpcConvertSettings.SerializerOptions, cancellationToken);
                     }
                     finally
                     {

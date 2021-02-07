@@ -9,9 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestServer", "TestServer\Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "jrl", "jrl\jrl.csproj", "{F97D3D4F-2464-432F-8C92-0A50685DF9DF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonRpcLite.Kestrel", "JsonRpcLite.Kestrel\JsonRpcLite.Kestrel.csproj", "{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonRpcLite.Kestrel", "JsonRpcLite.Kestrel\JsonRpcLite.Kestrel.csproj", "{FCF6C9F7-39AF-4BFA-AF45-5E6787900F19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "TestClient\TestClient.csproj", "{2D661961-2C18-4DCD-859A-B166833AAF13}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestClient", "TestClient\TestClient.csproj", "{2D661961-2C18-4DCD-859A-B166833AAF13}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

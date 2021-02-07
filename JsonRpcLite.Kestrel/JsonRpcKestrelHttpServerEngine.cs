@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace JsonRpcLite.Kestrel
 {
-    public class JsonRpcKestrelServerEngine : JsonRpcHttpServerEngineBase
+    public class JsonRpcKestrelHttpServerEngine : JsonRpcHttpServerEngineBase
     {
         private readonly IPAddress _address;
         private readonly int _port;
@@ -22,9 +22,9 @@ namespace JsonRpcLite.Kestrel
         protected override bool SmdEnabled { get; }
 
 
-        public JsonRpcKestrelServerEngine(IPAddress address, int port, bool enableSmd = true)
+        public JsonRpcKestrelHttpServerEngine(IPAddress address, int port, bool enableSmd = true)
         {
-            Name = nameof(JsonRpcKestrelServerEngine);
+            Name = nameof(JsonRpcKestrelHttpServerEngine);
             _address = address;
             _port = port;
             SmdEnabled = enableSmd;
@@ -52,7 +52,7 @@ namespace JsonRpcLite.Kestrel
                     app.Run(context =>
                     {
                         var jsonRpcHttpContext = new JsonRpcKestrelHttpContext(context);
-                        return HandleRequestAsync(jsonRpcHttpContext, _router);
+                        return HandleContextAsync(jsonRpcHttpContext, _router);
                     });
                 });
             _host = builder.Build();

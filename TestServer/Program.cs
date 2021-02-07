@@ -67,7 +67,7 @@ namespace TestServer
                 else
                 if (args.Contains("-http-kestrel"))
                 {
-                    serverEngine = new JsonRpcKestrelServerEngine(IPAddress.Any, 8090);
+                    serverEngine = new JsonRpcKestrelHttpServerEngine(IPAddress.Any, 8090);
                     server.UseEngine(serverEngine);
                 }
                 else

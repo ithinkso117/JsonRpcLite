@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.WebSockets;
 using System.Threading.Tasks;
 using JsonRpcLite.Log;
 using JsonRpcLite.Services;
@@ -51,7 +52,7 @@ namespace JsonRpcLite.Network
                                 requestPath = context.Request.Url.AbsolutePath;
                             }
                             var websocketContext = await context.AcceptWebSocketAsync("JsonRpcLite").ConfigureAwait(false);
-                            ProcessRequestAsync(requestPath, _router, websocketContext.WebSocket);
+                            ProcessWebSocketAsync(requestPath, _router, websocketContext.WebSocket);
                         }
                         else
                         {
@@ -66,6 +67,18 @@ namespace JsonRpcLite.Network
                 }
             }, TaskCreationOptions.LongRunning);
             Logger.WriteInfo("JsonRpc websocket server engine started.");
+        }
+
+
+        /// <summary>
+        /// Process data from websocket and return result data to remote client.
+        /// </summary>
+        /// <param name="requestPath">The request path from the http request.</param>
+        /// <param name="router">The router to handle the request data.</param>
+        /// <param name="socket">The connected websocket.</param>
+        private async void ProcessWebSocketAsync(string requestPath, IJsonRpcRouter router, WebSocket socket)
+        {
+            await HandleWebSocketAsync(requestPath, router, socket).ConfigureAwait(false);
         }
 
 

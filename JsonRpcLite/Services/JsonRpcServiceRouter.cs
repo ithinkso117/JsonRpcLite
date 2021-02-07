@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JsonRpcLite.Utilities;
 
@@ -23,7 +23,7 @@ namespace JsonRpcLite.Services
         /// <param name="service">The service to register.</param>
         public void RegisterService<T>(T service)
         {
-            JsonRpcCallManager.RegisterService<T>(service);
+            JsonRpcCallManager.RegisterService(service);
         }
 
 
@@ -79,8 +79,9 @@ namespace JsonRpcLite.Services
         /// </summary>
         /// <param name="serviceName">The service name to dispatch.</param>
         /// <param name="requests">The requests to handle.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The handled response.</returns>
-        public async Task<JsonRpcResponse[]> DispatchRequestsAsync(string serviceName, JsonRpcRequest[] requests)
+        public async Task<JsonRpcResponse[]> DispatchRequestsAsync(string serviceName, JsonRpcRequest[] requests, CancellationToken cancellationToken = default)
         {
             var service = JsonRpcCallManager.GetService(serviceName);
             if (service == null)
@@ -90,7 +91,7 @@ namespace JsonRpcLite.Services
             if (requests.Length == 1)
             {
                 var request = requests[0];
-                var response = await GetResponseAsync(service, request).ConfigureAwait(false);
+                var response = await GetResponseAsync(service, request, cancellationToken).ConfigureAwait(false);
                 return new[]{response};
 
             }
@@ -98,7 +99,7 @@ namespace JsonRpcLite.Services
             var responseList = new List<JsonRpcResponse>();
             foreach (var request in requests)
             {
-                var response = await GetResponseAsync(service, request).ConfigureAwait(false);
+                var response = await GetResponseAsync(service, request, cancellationToken).ConfigureAwait(false);
                 if (response != null)
                 {
                     responseList.Add(response);
@@ -114,8 +115,9 @@ namespace JsonRpcLite.Services
         /// </summary>
         /// <param name="service">The service which will handle the request.</param>
         /// <param name="request">The request to handle.</param>
+        /// <param name="cancellationToken">The cancellation token which can cancel this method.</param>
         /// <returns>The response for the request.</returns>
-        private async Task<JsonRpcResponse> GetResponseAsync(IJsonRpcCallService service, JsonRpcRequest request)
+        private async Task<JsonRpcResponse> GetResponseAsync(IJsonRpcCallService service, JsonRpcRequest request, CancellationToken cancellationToken)
         {
             JsonRpcResponse response = null;
             try
@@ -130,7 +132,7 @@ namespace JsonRpcLite.Services
                 if (request.Params.Type == RequestParameterType.RawString)
                 {
                     var paramString = (string) request.Params.Value;
-                    arguments = await JsonRpcCodec.DecodeArgumentsAsync(paramString, rpcCall.Parameters).ConfigureAwait(false);
+                    arguments = await JsonRpcCodec.DecodeArgumentsAsync(paramString, rpcCall.Parameters, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {

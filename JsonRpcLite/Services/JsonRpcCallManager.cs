@@ -227,7 +227,7 @@ namespace JsonRpcLite.Services
             {
                 if (method.IsGenericMethod)
                 {
-                    //WE DO NOT SUPPORT GENERICMETHOD
+                    //WE DO NOT SUPPORT GENERIC-METHOD
                     continue;
                 }
                 //Get if the method support JsonRpcMethodAttribute
@@ -316,7 +316,7 @@ namespace JsonRpcLite.Services
             {
                 if (interfaceMethod.IsGenericMethod)
                 {
-                    //WE DO NOT SUPPORT GENERICMETHOD
+                    //WE DO NOT SUPPORT GENERIC-METHOD
                     throw new InvalidOperationException("GenericMethod is not supported.");
                 }
                 var method = serviceType.GetMethod(interfaceMethod.Name);
