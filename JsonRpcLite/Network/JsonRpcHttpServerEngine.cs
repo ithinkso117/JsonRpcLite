@@ -68,10 +68,13 @@ namespace JsonRpcLite.Network
         /// </summary>
         public override void Stop()
         {
-            _router = null;
-            _stopped = true;
-            _listener.Close();
-            Logger.WriteInfo("JsonRpc http server engine stopped.");
+            if (_listener != null)
+            {
+                _router = null;
+                _stopped = true;
+                _listener.Close();
+                Logger.WriteInfo("JsonRpc http server engine stopped.");
+            }
         }
 
         

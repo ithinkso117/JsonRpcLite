@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Threading.Tasks;
+using JsonRpcLite.Log;
 using JsonRpcLite.Network;
 using JsonRpcLite.Services;
 using Microsoft.AspNetCore.Builder;
@@ -75,8 +76,12 @@ namespace JsonRpcLite.Kestrel
         /// </summary>
         public override async void Stop()
         {
-            await _host.StopAsync().ConfigureAwait(false);
-            _host.Dispose();
+            if (_host != null)
+            {
+                await _host.StopAsync().ConfigureAwait(false);
+                _host.Dispose();
+                Logger.WriteInfo("JsonRpc kestrel websocket server engine stopped.");
+            }
         }
     }
 }
